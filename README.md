@@ -28,8 +28,8 @@ nexon-assignments/
 
 - Node.js 18
 - npm 또는 yarn
-- MongoDB (선택적)
-- Redis (선택적)
+- MongoDB
+- Redis
 
 ### 설치
 
@@ -55,6 +55,28 @@ $ npm run start:event:dev    # Event 서비스
 $ npm run start:gateway:prod # Gateway 서비스
 $ npm run start:auth:prod    # Auth 서비스
 $ npm run start:event:prod   # Event 서비스
+```
+
+### Docker 실행 방법
+
+```bash
+# Docker 환경 변수 설정
+$ mv .template.env .env
+
+# 모든 서비스 빌드 및 실행
+$ docker-compose up -d
+
+# 컨테이너 상태 확인
+$ docker-compose ps
+
+# 로그 확인
+$ docker-compose logs -f gateway       # Gateway 서비스 로그 실시간 확인
+
+# 모든 서비스 중지
+$ docker-compose down
+
+# 볼륨 포함하여 모든 서비스 중지 및 삭제
+$ docker-compose down -v
 ```
 
 ## 테스트

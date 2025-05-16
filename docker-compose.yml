@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: Admin123!
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - app-network
+
+  redis:
+    image: redis:6.2-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./scripts/init-redis.sh:/usr/local/bin/init-redis.sh
+    networks:
+      - app-network
+    # 컨테이너가 시작된 후 초기화 스크립트 실행
+    entrypoint: >
+      sh -c "
+        redis-server --requirepass Admin123! &
+        sleep 5
+        chmod +x /usr/local/bin/init-redis.sh
+        /usr/local/bin/init-redis.sh
+        tail -f /dev/null
+      "
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nexon-gateway
+    container_name: gateway
+    restart: always
+    ports:
+      - "${GATEWAY_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - app-network
+    command: node dist/apps/gateway/main
+
+  auth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nexon-auth
+    container_name: auth
+    restart: always
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - app-network
+    command: node dist/apps/auth/main
+
+  event:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nexon-event
+    container_name: event
+    restart: always
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - app-network
+    command: node dist/apps/event/main
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge 
