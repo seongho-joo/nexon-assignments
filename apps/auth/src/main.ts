@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { HttpExceptionFilter } from '@app/common/filters';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -24,6 +25,20 @@ async function bootstrap() {
   // 환경변수에서 포트 가져오기
   const configService = app.get(ConfigService);
   const port = configService.get<number>('AUTH_PORT') || 3001;
+
+  // Set up microservice
+  const microservicePort = configService.get<number>('AUTH_MICROSERVICE_PORT') || 4001;
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.TCP,
+    options: {
+      host: '0.0.0.0',
+      port: microservicePort,
+    },
+  });
+
+  // Start microservice
+  await app.startAllMicroservices();
+  console.log(`Auth microservice is running on port: ${microservicePort}`);
 
   await app.listen(port);
   console.log(`Auth service is running on: http://localhost:${port}`);
