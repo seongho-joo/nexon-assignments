@@ -1,6 +1,8 @@
 import { Controller, Get } from '@nestjs/common';
 import { CustomLoggerService } from '@app/common';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Gateway')
 @Controller()
 export class AppController {
   constructor(private readonly logger: CustomLoggerService) {
