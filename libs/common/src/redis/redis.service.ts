@@ -55,6 +55,59 @@ export class RedisService {
     }
   }
 
+  async sAdd(key: string, ...members: string[]): Promise<number> {
+    try {
+      const client = this.getClient();
+      return client.sAdd(key, members);
+    } catch (error) {
+      this.logger.error(`Error adding members to Redis Set (key: ${key})`, error);
+      throw error;
+    }
+  }
+
+  async sMembers(key: string): Promise<string[]> {
+    try {
+      const client = this.getClient();
+      return client.sMembers(key);
+    } catch (error) {
+      this.logger.error(`Error fetching members from Redis Set (key: ${key})`, error);
+      throw error;
+    }
+  }
+
+  async sIsMember(key: string, member: string): Promise<boolean> {
+    try {
+      const client = this.getClient();
+      return client.sIsMember(key, member);
+    } catch (error) {
+      this.logger.error(
+        `Error checking member in Redis Set (key: ${key}, member: ${member})`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  async sRem(key: string, ...members: string[]): Promise<number> {
+    try {
+      const client = this.getClient();
+      return client.sRem(key, members);
+    } catch (error) {
+      this.logger.error(`Error removing members from Redis Set (key: ${key})`, error);
+      throw error;
+    }
+  }
+
+  async sCard(key: string): Promise<number> {
+    try {
+      const client = this.getClient();
+      return client.sCard(key);
+    } catch (error) {
+      this.logger.error(`Error getting cardinality of Redis Set (key: ${key})`, error);
+      throw error;
+    }
+  }
+
   private getClient(): RedisClientType {
     return (this.cacheManager as RedisCache).store.getClient();
   }
