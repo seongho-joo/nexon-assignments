@@ -18,7 +18,7 @@ import { ServiceUnavailableException } from '@app/common/exceptions';
 
 @ApiTags('Gateway')
 @Controller()
-export class AppController {
+export class GatewayController {
   private readonly authServiceUrl: string;
   private readonly eventServiceUrl: string;
 
