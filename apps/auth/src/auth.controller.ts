@@ -4,7 +4,7 @@ import { PingResponseDto, ServiceNameEnum } from '@app/common/dto';
 
 @ApiTags('Auth')
 @Controller()
-export class AppController {
+export class AuthController {
   constructor() {}
 
   @Get()

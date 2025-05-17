@@ -4,7 +4,7 @@ import { PingResponseDto, ServiceNameEnum } from '@app/common/dto';
 
 @ApiTags('Event')
 @Controller()
-export class AppController {
+export class EventController {
   constructor() {}
 
   @Get()
