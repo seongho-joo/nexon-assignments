@@ -1,4 +1,4 @@
-import { Controller, Get, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
+import { Controller, Get, HttpStatus } from '@nestjs/common';
 import {
   ApiOkResponse,
   ApiOperation,
@@ -14,6 +14,7 @@ import { HttpService } from '@nestjs/axios';
 import { catchError, firstValueFrom, timeout } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
 import { AxiosError } from 'axios';
+import { ServiceUnavailableException } from '@app/common/exceptions';
 
 @ApiTags('Gateway')
 @Controller()
@@ -124,7 +125,11 @@ export class AppController {
     }
 
     if (response.status === 'error') {
-      throw new ServiceUnavailableException(response);
+      throw new ServiceUnavailableException(
+        '하나 이상의 서비스가 정상 작동하지 않습니다',
+        'SERVICE_CHECK_FAILED',
+        { services: response.services },
+      );
     }
 
     return response;
@@ -158,16 +163,18 @@ export class AppController {
 
   private async checkAuthServiceHealth(): Promise<void> {
     try {
+      this.logger.log(`Checking Auth service at ${this.authServiceUrl}`);
       const request = this.httpService.get(`${this.authServiceUrl}`).pipe(
         timeout(3000),
         catchError((error: AxiosError) => {
-          throw new Error(`Auth service request failed: ${error.message}`);
+          this.logger.error('Auth request error details:', error);
+          throw new Error(`Auth service request failed: ${error.message || 'Unknown error'}`);
         }),
       );
 
       const response = await firstValueFrom(request);
 
-      if (response.status !== 200) {
+      if (response.status !== HttpStatus.OK) {
         throw new Error(`Auth service returned non-OK status: ${response.status}`);
       }
     } catch (error) {
@@ -179,16 +186,18 @@ export class AppController {
 
   private async checkEventServiceHealth(): Promise<void> {
     try {
+      this.logger.log(`Checking Event service at ${this.eventServiceUrl}`);
       const request = this.httpService.get(`${this.eventServiceUrl}`).pipe(
         timeout(3000),
         catchError((error: AxiosError) => {
-          throw new Error(`Event service request failed: ${error.message}`);
+          this.logger.error('Event request error details:', error);
+          throw new Error(`Event service request failed: ${error.message || 'Unknown error'}`);
         }),
       );
 
       const response = await firstValueFrom(request);
 
-      if (response.status !== HttpStatus.OK) {
+      if (response.status !== 200) {
         throw new Error(`Event service returned non-OK status: ${response.status}`);
       }
     } catch (error) {

@@ -1,10 +1,15 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
+import { HttpExceptionFilter } from '@app/common/filters';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api/auth');
+
+  // 전역 예외 필터 적용
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   // Swagger 설정
   const config = new DocumentBuilder()
@@ -16,7 +21,12 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  await app.listen(3001);
+  // 환경변수에서 포트 가져오기
+  const configService = app.get(ConfigService);
+  const port = configService.get<number>('AUTH_PORT') || 3001;
+
+  await app.listen(port);
+  console.log(`Auth service is running on: http://localhost:${port}`);
 }
 
 bootstrap();
