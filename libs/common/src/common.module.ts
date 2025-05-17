@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { LoggerModule } from './logger/logger.module';
-import { DbModule } from './db/db.module';
-import { RedisModule } from './redis/redis.module';
+import { LoggerModule } from '@app/common/logger';
+import { DbModule } from '@app/common/db';
+import { RedisModule } from '@app/common/redis';
 
 @Module({
   imports: [

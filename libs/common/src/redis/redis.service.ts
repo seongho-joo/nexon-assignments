@@ -12,9 +12,10 @@ interface RedisCache extends Cache {
 
 @Injectable()
 export class RedisService {
-  private readonly logger = new CustomLoggerService();
-
-  constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {
+  constructor(
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    private readonly logger: CustomLoggerService,
+  ) {
     this.logger.setContext('RedisService');
   }
 

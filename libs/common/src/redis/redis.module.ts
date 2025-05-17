@@ -4,7 +4,7 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-store';
 import { CustomLoggerService } from '@app/common/logger';
 import { RedisClientType } from 'redis';
-import { RedisService } from '@app/common/redis';
+import { RedisService } from '@app/common/redis/redis.service';
 
 @Module({
   imports: [
