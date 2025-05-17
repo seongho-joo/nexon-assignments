@@ -41,6 +41,7 @@
     "start:all:dev": "concurrently \"npm run start:gateway:dev\" \"npm run start:auth:dev\" \"npm run start:event:dev\""
   },
   "dependencies": {
+    "@nestjs/axios": "^4.0.0",
     "@nestjs/cache-manager": "^3.0.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
@@ -51,6 +52,7 @@
     "@nestjs/passport": "^11.0.0",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.2.0",
+    "axios": "^1.9.0",
     "cache-manager": "^6.4.3",
     "cache-manager-redis-store": "^3.0.1",
     "class-transformer": "^0.5.1",
