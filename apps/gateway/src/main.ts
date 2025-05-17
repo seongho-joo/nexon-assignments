@@ -6,7 +6,7 @@ import { HttpExceptionFilter } from '@app/common/filters';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix('api/gateway');
+  app.setGlobalPrefix('api/');
 
   // 전역 예외 필터 적용
   app.useGlobalFilters(new HttpExceptionFilter());
