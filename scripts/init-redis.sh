@@ -3,7 +3,7 @@
 echo "Redis initialization script starting..."
 
 # 비밀번호가 필요한 경우
-REDIS_PASSWORD="example"
+REDIS_PASSWORD="Admin123!"
 
 # 초기 데이터 설정
 redis-cli -a $REDIS_PASSWORD SADD "authorization:USER:POST" "/request"
