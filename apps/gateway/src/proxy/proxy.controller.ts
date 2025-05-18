@@ -31,6 +31,7 @@ import {
   SignUpRequestDto,
   SignUpResponseDto,
 } from '@app/common/dto';
+import { Public } from '@app/common/decorators/public.decorator';
 
 interface ProxyPayload {
   path: string;
@@ -53,6 +54,7 @@ export class ProxyController {
     this.logger.setContext('ProxyController');
   }
 
+  @Public()
   @ApiTags('User')
   @ApiExtraModels(BaseResponseDto, SignUpResponseDto)
   @ApiQuery({ name: 'adminKey', required: false, description: '관리자 계정을 생성하기 위한 키' })

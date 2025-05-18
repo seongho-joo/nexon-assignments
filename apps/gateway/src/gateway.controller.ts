@@ -15,9 +15,11 @@ import { catchError, firstValueFrom, timeout } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
 import { AxiosError } from 'axios';
 import { ServiceUnavailableException } from '@app/common/exceptions';
+import { Public } from '@app/common/decorators';
 
 @ApiTags('Base')
 @Controller()
+@Public()
 export class GatewayController {
   private readonly authServiceUrl: string;
   private readonly eventServiceUrl: string;
