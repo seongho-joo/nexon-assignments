@@ -6,6 +6,7 @@ import { CustomLoggerService } from '@app/common/logger';
 import { UserRole } from '@app/common/schemas';
 import { BadRequestException, UnauthorizedException } from '@app/common/exceptions';
 import { UserRepository } from '@app/common/repositories/user.repository';
+import { User } from '@app/common/schemas';
 
 @Injectable()
 export class UserService {
@@ -18,6 +19,14 @@ export class UserService {
   ) {
     this.logger.setContext('UserService');
     this.ADMIN_KEY = this.configService.get<string>('ADMIN_KEY') || '';
+  }
+
+  async findByUsername(username: string): Promise<User | null> {
+    return this.userRepository.findByUsername(username);
+  }
+
+  async findById(id: string): Promise<User | null> {
+    return this.userRepository.findById(id);
   }
 
   async register(

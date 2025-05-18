@@ -8,7 +8,7 @@ import { RedisModule } from '@app/common/redis';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env', '.template.env'],
+      envFilePath: ['.env'],
     }),
     LoggerModule,
     DbModule,

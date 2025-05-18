@@ -1,13 +1,16 @@
 import { BadRequestException, Controller, HttpStatus, NotFoundException } from '@nestjs/common';
-import { MessagePattern } from '@nestjs/microservices';
+import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CustomLoggerService } from '@app/common/logger';
 import { UserService } from '@app/common/services/user.service';
 import {
   BaseResponseDto,
+  LoginRequestDto,
+  LoginResponseDto,
   SignUpQueryDto,
   SignUpRequestDto,
   SignUpResponseDto,
 } from '@app/common/dto';
+import { AuthService } from '@app/common/services/auth.service';
 
 interface ProxyPayload {
   path: string;
@@ -24,6 +27,7 @@ interface ProxyPayload {
 export class AuthGateway {
   constructor(
     private readonly userService: UserService,
+    private readonly authService: AuthService,
     private readonly logger: CustomLoggerService,
   ) {
     this.logger.setContext('AuthGateway');
@@ -34,12 +38,14 @@ export class AuthGateway {
     this.logger.log(`Received proxy request for path: ${data.path}`);
 
     if (!data.body) {
-      throw new BadRequestException('Invalid request body');
+      throw new RpcException(new BadRequestException('Invalid request body'));
     }
 
     switch (data.path) {
       case 'sign-up':
         return this.handleSignUp(data);
+      case 'login':
+        return this.handleLogin(data);
       default:
         throw new NotFoundException(`Cannot handle path: ${data.path}`);
     }
@@ -47,7 +53,7 @@ export class AuthGateway {
 
   private async handleSignUp(data: ProxyPayload): Promise<BaseResponseDto<SignUpResponseDto>> {
     if (!data.body || !data.body.body) {
-      throw new BadRequestException('Invalid request body');
+      throw new RpcException(new BadRequestException('Invalid request body'));
     }
 
     const { username, password, role } = data.body.body as SignUpRequestDto;
@@ -59,6 +65,23 @@ export class AuthGateway {
       statusCode: HttpStatus.CREATED,
       message: 'User registered successfully',
       data: new SignUpResponseDto(userId),
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  private async handleLogin(data: ProxyPayload): Promise<BaseResponseDto<LoginResponseDto>> {
+    if (!data.body || !data.body.body) {
+      throw new RpcException(new BadRequestException('Invalid request body'));
+    }
+
+    const { username, password } = data.body.body as LoginRequestDto;
+
+    const result = await this.authService.login(username, password);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Login successful',
+      data: result,
       timestamp: new Date().toISOString(),
     };
   }

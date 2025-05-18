@@ -30,6 +30,8 @@ import {
   SignUpQueryDto,
   SignUpRequestDto,
   SignUpResponseDto,
+  LoginRequestDto,
+  LoginResponseDto,
 } from '@app/common/dto';
 import { Public } from '@app/common/decorators/public.decorator';
 
@@ -82,6 +84,29 @@ export class ProxyController {
     void body;
     void query;
     this.routeToMicroservice('AUTH', this.authClient, 'sign-up', req, res);
+  }
+
+  @Public()
+  @ApiTags('User')
+  @ApiExtraModels(BaseResponseDto, LoginResponseDto)
+  @ApiOperation({
+    summary: '사용자 로그인',
+    description: '사용자 인증 수행 및 JWT 토큰 발급',
+  })
+  @ApiBody({ type: BaseResponseDto })
+  @ApiCreatedResponse({
+    description: '로그인 성공',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        { properties: { data: { $ref: getSchemaPath(LoginResponseDto) } } },
+      ],
+    },
+  })
+  @Post('auth/login')
+  handleLogin(@Req() req: Request, @Res() res: Response, @Body() body: LoginRequestDto): void {
+    void body;
+    this.routeToMicroservice('AUTH', this.authClient, 'login', req, res);
   }
 
   @ApiTags('Event')
