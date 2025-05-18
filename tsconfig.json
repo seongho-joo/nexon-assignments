@@ -18,14 +18,30 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@app/common": ["libs/common/src"],
-      "@app/common/*": ["libs/common/src/*"],
-      "@app/gateway": ["apps/gateway/src"],
-      "@app/gateway/*": ["apps/gateway/src/*"],
-      "@app/auth": ["apps/auth/src"],
-      "@app/auth/*": ["apps/auth/src/*"],
-      "@app/event": ["apps/event/src"],
-      "@app/event/*": ["apps/event/src/*"]
+      "@app/common": [
+        "libs/src"
+      ],
+      "@app/common/*": [
+        "libs/src/*"
+      ],
+      "@app/gateway": [
+        "apps/gateway/src"
+      ],
+      "@app/gateway/*": [
+        "apps/gateway/src/*"
+      ],
+      "@app/auth": [
+        "apps/auth/src"
+      ],
+      "@app/auth/*": [
+        "apps/auth/src/*"
+      ],
+      "@app/event": [
+        "apps/event/src"
+      ],
+      "@app/event/*": [
+        "apps/event/src/*"
+      ]
     }
   }
 }

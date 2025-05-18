@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { BaseException } from './base.exception';
+import { BaseException } from '@app/common/exceptions/base.exception';
 
 export class ServiceUnavailableException extends BaseException {
   constructor(

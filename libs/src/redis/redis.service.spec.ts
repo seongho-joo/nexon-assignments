@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { RedisService } from './redis.service';
+import { RedisService } from '@app/common/redis/redis.service';
 import { CustomLoggerService } from '@app/common/logger';
 
 describe('RedisService', () => {

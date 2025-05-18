@@ -16,7 +16,7 @@ import { ConfigService } from '@nestjs/config';
 import { AxiosError } from 'axios';
 import { ServiceUnavailableException } from '@app/common/exceptions';
 
-@ApiTags('Gateway')
+@ApiTags('Base')
 @Controller()
 export class GatewayController {
   private readonly authServiceUrl: string;

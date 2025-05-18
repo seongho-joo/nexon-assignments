@@ -142,7 +142,7 @@
       "<rootDir>/libs/"
     ],
     "moduleNameMapper": {
-      "^@app/common(|/.*)$": "<rootDir>/libs/common/src/$1",
+      "^@app/common(|/.*)$": "<rootDir>/libs/src/$1",
       "^@app/gateway(|/.*)$": "<rootDir>/apps/gateway/src/$1",
       "^@app/auth(|/.*)$": "<rootDir>/apps/auth/src/$1",
       "^@app/event(|/.*)$": "<rootDir>/apps/event/src/$1"
