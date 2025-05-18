@@ -28,24 +28,25 @@ import {
   ApiTags,
   getSchemaPath,
 } from '@nestjs/swagger';
+import { BaseResponseDto, GatewayCommandEnum } from '@app/common/dto';
 import {
-  BaseResponseDto,
-  GatewayCommandEnum,
   LoginRequestDto,
   LoginResponseDto,
+  LogoutRequestDto,
+  LogoutResponseDto,
   SignUpQueryDto,
   SignUpRequestDto,
   SignUpResponseDto,
   UserInfo,
-} from '@app/common/dto';
+} from '@app/common/dto/user';
 import { Public, Roles, User } from '@app/common/decorators';
 import { UserRole } from '@app/common/schemas';
 import {
   GetRolePermissionsDto,
   RolePermissionsResponseDto,
   SetRolePermissionDto,
-} from '@app/common/dto/role/role-permission.dto';
-import { UpdateUserRoleDto } from '@app/common/dto/role';
+  UpdateUserRoleDto,
+} from '@app/common/dto/role';
 import {
   CreateEventDto,
   EventResponseDto,
@@ -53,7 +54,7 @@ import {
   EventRewardsResponseDto,
 } from '@app/common/dto/event';
 import { RewardDto } from '@app/common/dto/event/reward.dto';
-import { CreateRequestDto, RequestResponseDto } from '@app/common/dto/request/';
+import { CreateRequestDto, RequestResponseDto } from '@app/common/dto/request';
 
 interface ProxyPayload {
   path: string;
@@ -127,6 +128,28 @@ export class ProxyController {
   handleLogin(@Req() req: Request, @Res() res: Response, @Body() body: LoginRequestDto): void {
     void body;
     this.routeToMicroservice('AUTH', this.authClient, 'login', req, res, GatewayCommandEnum.AUTH);
+  }
+
+  @ApiTags('Auth')
+  @ApiOperation({
+    summary: '사용자 로그아웃',
+    description: '사용자 로그아웃 처리 및 세션 종료',
+  })
+  @ApiBody({ type: LogoutRequestDto })
+  @ApiExtraModels(BaseResponseDto, LogoutResponseDto)
+  @ApiCreatedResponse({
+    description: '로그아웃 성공',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        { properties: { data: { $ref: getSchemaPath(LogoutResponseDto) } } },
+      ],
+    },
+  })
+  @Post('auth/logout')
+  handleLogout(@Req() req: Request, @Res() res: Response, @Body() body: LogoutRequestDto): void {
+    void body;
+    this.routeToMicroservice('AUTH', this.authClient, 'logout', req, res, GatewayCommandEnum.AUTH);
   }
 
   @ApiTags('Auth')

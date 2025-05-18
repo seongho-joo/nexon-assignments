@@ -2,15 +2,14 @@ import { BadRequestException, Controller, HttpStatus, NotFoundException } from '
 import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CustomLoggerService } from '@app/common/logger';
 import { UserService } from '@app/common/services/user.service';
+import { BaseResponseDto, GatewayCommandEnum } from '@app/common/dto';
 import {
-  BaseResponseDto,
-  GatewayCommandEnum,
   LoginRequestDto,
   LoginResponseDto,
   SignUpQueryDto,
   SignUpRequestDto,
   SignUpResponseDto,
-} from '@app/common/dto';
+} from '@app/common/dto/user';
 import { AuthService } from '@app/common/services/auth.service';
 import {
   GetRolePermissionsDto,
@@ -54,6 +53,8 @@ export class AuthGateway {
         return this.handleSignUp(data);
       case 'login':
         return this.handleLogin(data);
+      case 'logout':
+        return this.handleLogout(data);
       case 'role-permissions':
         return this.handleRolePermissions(data);
       case 'user-role':
@@ -94,6 +95,22 @@ export class AuthGateway {
       statusCode: HttpStatus.OK,
       message: 'Login successful',
       data: result,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  private async handleLogout(data: ProxyPayload): Promise<BaseResponseDto<void>> {
+    if (!data.body || !data.body.body) {
+      throw new RpcException(new BadRequestException('Invalid request body'));
+    }
+
+    const { userId } = data.body.body as { userId: string };
+    await this.authService.logout(userId);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Logout successful',
+      data: undefined,
       timestamp: new Date().toISOString(),
     };
   }

@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString } from 'class-validator';
-import { UserInfo } from '@app/common/dto';
+import { UserInfo } from '@app/common/dto/user';
 
 export class LoginRequestDto {
   @ApiProperty({
