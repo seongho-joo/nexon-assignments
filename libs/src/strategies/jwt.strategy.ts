@@ -3,6 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { UnauthorizedException } from '@app/common/exceptions';
+import { UserInfo } from '@app/common/dto/user/types';
 
 interface JwtPayload {
   userId: string;
@@ -25,7 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: JwtPayload) {
+  validate(payload: JwtPayload): UserInfo {
     if (!payload.userId || !payload.username || !payload.role) {
       throw new UnauthorizedException('Invalid token payload');
     }

@@ -3,13 +3,10 @@ import { Reflector } from '@nestjs/core';
 import { RedisService } from '@app/common/redis';
 import { ForbiddenException, UnauthorizedException } from '@app/common/exceptions';
 import { UserRole } from '@app/common/schemas';
+import { UserInfo } from '@app/common/dto/user/types';
 
 interface RequestWithUser extends Request {
-  user: {
-    id: string;
-    username: string;
-    role: string;
-  };
+  user: UserInfo;
   method: string;
   route: {
     path: string;

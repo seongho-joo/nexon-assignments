@@ -1,13 +1,10 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { UserRole } from '@app/common/schemas';
 import { ForbiddenException, UnauthorizedException } from '@app/common/exceptions';
+import { UserInfo } from '@app/common/dto/user/types';
 
 interface RequestWithUser extends Request {
-  user: {
-    id: string;
-    username: string;
-    role: string;
-  };
+  user: UserInfo;
   params: {
     userId: string;
   };
