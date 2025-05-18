@@ -4,6 +4,7 @@ import { RedisService } from '@app/common/redis';
 import { ForbiddenException, UnauthorizedException } from '@app/common/exceptions';
 import { UserRole } from '@app/common/schemas';
 import { UserInfo } from '@app/common/dto/user/types';
+import { RedisEnum } from '@app/common/redis/redis.enum';
 
 interface RequestWithUser extends Request {
   user: UserInfo;
@@ -44,8 +45,9 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const cacheKey = `authorization:${user.role}:${method}`;
-    const allowedPaths = await this.redisService.sMembers(cacheKey);
+    const prefix = `${user.role}:${method}`;
+    const { key } = RedisEnum.AUTHORIZATION_ROLE.getKeyAndTTL(prefix);
+    const allowedPaths = await this.redisService.sMembers(key);
 
     if (!allowedPaths.includes(path)) {
       throw new ForbiddenException('Access denied for this role');
