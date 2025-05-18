@@ -30,6 +30,7 @@ import {
 } from '@nestjs/swagger';
 import {
   BaseResponseDto,
+  GatewayCommandEnum,
   LoginRequestDto,
   LoginResponseDto,
   SignUpQueryDto,
@@ -45,8 +46,14 @@ import {
   SetRolePermissionDto,
 } from '@app/common/dto/role/role-permission.dto';
 import { UpdateUserRoleDto } from '@app/common/dto/role';
-import { CreateEventDto } from '@app/common/dto/event/create-event.dto';
+import {
+  CreateEventDto,
+  EventResponseDto,
+  EventListResponseDto,
+  EventRewardsResponseDto,
+} from '@app/common/dto/event';
 import { RewardDto } from '@app/common/dto/event/reward.dto';
+import { CreateRequestDto, RequestResponseDto } from '@app/common/dto/request/';
 
 interface ProxyPayload {
   path: string;
@@ -96,7 +103,7 @@ export class ProxyController {
   ): void {
     void body;
     void query;
-    this.routeToMicroservice('AUTH', this.authClient, 'sign-up', req, res);
+    this.routeToMicroservice('AUTH', this.authClient, 'sign-up', req, res, GatewayCommandEnum.AUTH);
   }
 
   @Public()
@@ -119,7 +126,7 @@ export class ProxyController {
   @Post('auth/login')
   handleLogin(@Req() req: Request, @Res() res: Response, @Body() body: LoginRequestDto): void {
     void body;
-    this.routeToMicroservice('AUTH', this.authClient, 'login', req, res);
+    this.routeToMicroservice('AUTH', this.authClient, 'login', req, res, GatewayCommandEnum.AUTH);
   }
 
   @ApiTags('Auth')
@@ -143,7 +150,14 @@ export class ProxyController {
     @Body() body: SetRolePermissionDto,
   ): void {
     void body;
-    this.routeToMicroservice('AUTH', this.authClient, 'role-permissions', req, res);
+    this.routeToMicroservice(
+      'AUTH',
+      this.authClient,
+      'role-permissions',
+      req,
+      res,
+      GatewayCommandEnum.AUTH,
+    );
   }
 
   @ApiTags('Auth')
@@ -170,7 +184,14 @@ export class ProxyController {
     @Body() body: GetRolePermissionsDto,
   ): void {
     void body;
-    this.routeToMicroservice('AUTH', this.authClient, 'role-permissions', req, res);
+    this.routeToMicroservice(
+      'AUTH',
+      this.authClient,
+      'role-permissions',
+      req,
+      res,
+      GatewayCommandEnum.AUTH,
+    );
   }
 
   @ApiTags('Auth')
@@ -194,7 +215,14 @@ export class ProxyController {
     @Body() body: SetRolePermissionDto,
   ): void {
     void body;
-    this.routeToMicroservice('AUTH', this.authClient, 'role-permissions', req, res);
+    this.routeToMicroservice(
+      'AUTH',
+      this.authClient,
+      'role-permissions',
+      req,
+      res,
+      GatewayCommandEnum.AUTH,
+    );
   }
 
   @ApiTags('Auth')
@@ -231,7 +259,14 @@ export class ProxyController {
     @Res() res: Response,
   ): Promise<void> {
     void dto;
-    this.routeToMicroservice('AUTH', this.authClient, 'user-role', req, res);
+    this.routeToMicroservice(
+      'AUTH',
+      this.authClient,
+      'user-role',
+      req,
+      res,
+      GatewayCommandEnum.AUTH,
+    );
   }
 
   @ApiTags('Event')
@@ -240,28 +275,13 @@ export class ProxyController {
     description: '새로운 이벤트를 생성합니다.',
   })
   @ApiBody({ type: CreateEventDto })
-  @ApiExtraModels(BaseResponseDto)
+  @ApiExtraModels(BaseResponseDto, EventResponseDto)
   @ApiCreatedResponse({
     description: '이벤트가 성공적으로 생성됨',
     schema: {
       allOf: [
         { $ref: getSchemaPath(BaseResponseDto) },
-        {
-          properties: {
-            data: {
-              type: 'object',
-              properties: {
-                eventId: { type: 'string' },
-                title: { type: 'string' },
-                description: { type: 'string' },
-                startDate: { type: 'string', format: 'date-time' },
-                endDate: { type: 'string', format: 'date-time' },
-                status: { type: 'string' },
-                rewards: { type: 'array', items: { $ref: getSchemaPath(RewardDto) } },
-              },
-            },
-          },
-        },
+        { properties: { data: { $ref: getSchemaPath(EventResponseDto) } } },
       ],
     },
   })
@@ -275,7 +295,14 @@ export class ProxyController {
   ): void {
     void dto;
     req.headers['user-id'] = user.id;
-    this.routeToMicroservice('EVENT', this.eventClient, 'events', req, res);
+    this.routeToMicroservice(
+      'EVENT',
+      this.eventClient,
+      'events',
+      req,
+      res,
+      GatewayCommandEnum.EVENT,
+    );
   }
 
   @ApiTags('Event')
@@ -284,23 +311,13 @@ export class ProxyController {
     description: '특정 이벤트에 보상을 추가합니다.',
   })
   @ApiBody({ type: RewardDto })
-  @ApiExtraModels(BaseResponseDto)
+  @ApiExtraModels(BaseResponseDto, EventRewardsResponseDto)
   @ApiCreatedResponse({
     description: '이벤트 보상이 성공적으로 추가됨',
     schema: {
       allOf: [
         { $ref: getSchemaPath(BaseResponseDto) },
-        {
-          properties: {
-            data: {
-              type: 'object',
-              properties: {
-                eventId: { type: 'string' },
-                rewards: { type: 'array', items: { $ref: getSchemaPath(RewardDto) } },
-              },
-            },
-          },
-        },
+        { properties: { data: { $ref: getSchemaPath(EventRewardsResponseDto) } } },
       ],
     },
   })
@@ -314,7 +331,14 @@ export class ProxyController {
   ): void {
     void dto;
     req.params['eventId'] = eventId;
-    this.routeToMicroservice('EVENT', this.eventClient, 'events/rewards', req, res);
+    this.routeToMicroservice(
+      'EVENT',
+      this.eventClient,
+      'events/rewards',
+      req,
+      res,
+      GatewayCommandEnum.EVENT,
+    );
   }
 
   @ApiTags('Event')
@@ -322,19 +346,26 @@ export class ProxyController {
     summary: '이벤트 목록 조회',
     description: '모든 활성화된 이벤트 목록을 조회합니다.',
   })
-  @ApiExtraModels(BaseResponseDto)
+  @ApiExtraModels(BaseResponseDto, EventListResponseDto)
   @ApiCreatedResponse({
     description: '이벤트 목록 조회 성공',
     schema: {
       allOf: [
         { $ref: getSchemaPath(BaseResponseDto) },
-        { properties: { data: { type: 'array', items: { type: 'object' } } } },
+        { properties: { data: { $ref: getSchemaPath(EventListResponseDto) } } },
       ],
     },
   })
   @Get('events')
   handleGetEvents(@Req() req: Request, @Res() res: Response): void {
-    this.routeToMicroservice('EVENT', this.eventClient, 'events', req, res);
+    this.routeToMicroservice(
+      'EVENT',
+      this.eventClient,
+      'events',
+      req,
+      res,
+      GatewayCommandEnum.EVENT,
+    );
   }
 
   @ApiTags('Event')
@@ -342,13 +373,13 @@ export class ProxyController {
     summary: '이벤트 상세 조회',
     description: '특정 이벤트의 상세 정보를 조회합니다.',
   })
-  @ApiExtraModels(BaseResponseDto)
+  @ApiExtraModels(BaseResponseDto, EventResponseDto)
   @ApiCreatedResponse({
     description: '이벤트 상세 조회 성공',
     schema: {
       allOf: [
         { $ref: getSchemaPath(BaseResponseDto) },
-        { properties: { data: { type: 'object' } } },
+        { properties: { data: { $ref: getSchemaPath(EventResponseDto) } } },
       ],
     },
   })
@@ -358,7 +389,14 @@ export class ProxyController {
     @Req() req: Request,
     @Res() res: Response,
   ): void {
-    this.routeToMicroservice('EVENT', this.eventClient, `events/${eventId}`, req, res);
+    this.routeToMicroservice(
+      'EVENT',
+      this.eventClient,
+      `events/${eventId}`,
+      req,
+      res,
+      GatewayCommandEnum.EVENT,
+    );
   }
 
   @ApiTags('Event')
@@ -366,13 +404,13 @@ export class ProxyController {
     summary: '이벤트 보상 목록 조회',
     description: '특정 이벤트의 보상 목록을 조회합니다.',
   })
-  @ApiExtraModels(BaseResponseDto)
+  @ApiExtraModels(BaseResponseDto, EventRewardsResponseDto)
   @ApiCreatedResponse({
     description: '이벤트 보상 목록 조회 성공',
     schema: {
       allOf: [
         { $ref: getSchemaPath(BaseResponseDto) },
-        { properties: { data: { type: 'array', items: { type: 'object' } } } },
+        { properties: { data: { $ref: getSchemaPath(EventRewardsResponseDto) } } },
       ],
     },
   })
@@ -382,7 +420,80 @@ export class ProxyController {
     @Req() req: Request,
     @Res() res: Response,
   ): void {
-    this.routeToMicroservice('EVENT', this.eventClient, `events/${eventId}/rewards`, req, res);
+    this.routeToMicroservice(
+      'EVENT',
+      this.eventClient,
+      `events/${eventId}/rewards`,
+      req,
+      res,
+      GatewayCommandEnum.EVENT,
+    );
+  }
+
+  @ApiTags('Event')
+  @ApiOperation({
+    summary: '보상 요청 생성',
+    description: '특정 이벤트에 대한 보상을 요청합니다.',
+  })
+  @ApiBody({ type: CreateRequestDto })
+  @ApiExtraModels(BaseResponseDto, RequestResponseDto)
+  @ApiCreatedResponse({
+    description: '보상 요청이 성공적으로 생성됨',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        { properties: { data: { $ref: getSchemaPath(RequestResponseDto) } } },
+      ],
+    },
+  })
+  @Post('requests')
+  handleCreateRequest(
+    @Body() dto: CreateRequestDto,
+    @Req() req: Request,
+    @Res() res: Response,
+    @User() user: UserInfo,
+  ): void {
+    void dto;
+    req.headers['user-id'] = user.id;
+    this.routeToMicroservice(
+      'EVENT',
+      this.eventClient,
+      'requests',
+      req,
+      res,
+      GatewayCommandEnum.REQUEST,
+    );
+  }
+
+  @ApiTags('Event')
+  @ApiOperation({
+    summary: '보상 요청 조회',
+    description: '특정 보상 요청의 상세 정보를 조회합니다.',
+  })
+  @ApiExtraModels(BaseResponseDto, RequestResponseDto)
+  @ApiCreatedResponse({
+    description: '보상 요청 조회 성공',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        { properties: { data: { $ref: getSchemaPath(RequestResponseDto) } } },
+      ],
+    },
+  })
+  @Get('requests/:requestId')
+  handleGetRequestById(
+    @Param('requestId') requestId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): void {
+    this.routeToMicroservice(
+      'EVENT',
+      this.eventClient,
+      `requests/${requestId}`,
+      req,
+      res,
+      GatewayCommandEnum.REQUEST,
+    );
   }
 
   @ApiExcludeEndpoint()
@@ -404,13 +515,14 @@ export class ProxyController {
     path: string,
     req: Request,
     res: Response,
+    cmd: GatewayCommandEnum,
   ): void {
     this.logger.log(
       `Routing request to ${serviceName} service${path ? `: ${req.method} ${req.url}` : ' root'}`,
     );
 
     const pattern = {
-      cmd: 'proxy',
+      cmd,
     };
 
     const payload: ProxyPayload = {

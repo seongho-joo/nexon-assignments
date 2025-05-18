@@ -2,10 +2,15 @@ import { BadRequestException, Controller, HttpStatus, NotFoundException } from '
 import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CustomLoggerService } from '@app/common/logger';
 import { EventService } from '@app/common/services/event.service';
-import { BaseResponseDto, GatewayCommandEnum, UserInfo } from '@app/common/dto';
-import { Event, Reward } from '@app/common/schemas';
-import { CreateEventDto, RewardDto } from '@app/common/dto/event';
-import { User } from '@app/common/decorators';
+import { BaseResponseDto, GatewayCommandEnum } from '@app/common/dto';
+import {
+  CreateEventDto,
+  RewardDto,
+  EventResponseDto,
+  EventListResponseDto,
+  EventRewardsResponseDto,
+} from '@app/common/dto/event';
+import { plainToClass } from 'class-transformer';
 
 interface ProxyPayload {
   body: unknown;
@@ -49,7 +54,7 @@ export class EventGateway {
   private async handleEvents(data: {
     method: string;
     body: ProxyPayload;
-  }): Promise<BaseResponseDto<Event | Event[]>> {
+  }): Promise<BaseResponseDto<EventResponseDto | EventListResponseDto>> {
     switch (data.method) {
       case 'POST': {
         const createEventDto = data.body.body as CreateEventDto;
@@ -60,21 +65,24 @@ export class EventGateway {
         }
 
         const event = await this.eventService.createEvent(createEventDto, userId);
+        const response = plainToClass(EventResponseDto, event);
 
         return {
           statusCode: HttpStatus.CREATED,
           message: '이벤트가 성공적으로 생성되었습니다.',
-          data: event,
+          data: response,
           timestamp: new Date().toISOString(),
         };
       }
       case 'GET': {
         this.logger.log('Fetching all events');
         const events = await this.eventService.findAllEvents();
+        const response = plainToClass(EventListResponseDto, { events });
+
         return {
           statusCode: HttpStatus.OK,
           message: '이벤트 목록을 성공적으로 조회했습니다.',
-          data: events,
+          data: response,
           timestamp: new Date().toISOString(),
         };
       }
@@ -89,7 +97,7 @@ export class EventGateway {
     method: string;
     body: ProxyPayload;
     eventId: string;
-  }): Promise<BaseResponseDto<Event>> {
+  }): Promise<BaseResponseDto<EventResponseDto>> {
     if (data.method === 'GET') {
       const event = await this.eventService.findEventById(data.eventId);
 
@@ -97,10 +105,12 @@ export class EventGateway {
         throw new RpcException(new NotFoundException('Event not found'));
       }
 
+      const response = plainToClass(EventResponseDto, event);
+
       return {
         statusCode: HttpStatus.OK,
         message: '이벤트를 성공적으로 조회했습니다.',
-        data: event,
+        data: response,
         timestamp: new Date().toISOString(),
       };
     }
@@ -113,7 +123,7 @@ export class EventGateway {
   private async handleEventRewards(data: {
     method: string;
     body: ProxyPayload;
-  }): Promise<BaseResponseDto<Event | Event[] | Reward[]>> {
+  }): Promise<BaseResponseDto<EventRewardsResponseDto>> {
     const { eventId } = data.body.params as { eventId: string };
 
     switch (data.method) {
@@ -129,10 +139,15 @@ export class EventGateway {
           throw new RpcException(new NotFoundException('Event not found'));
         }
 
+        const response = plainToClass(EventRewardsResponseDto, {
+          eventId: event.eventId,
+          rewards: event.rewards,
+        });
+
         return {
           statusCode: HttpStatus.OK,
           message: '이벤트 보상이 성공적으로 추가되었습니다.',
-          data: event,
+          data: response,
           timestamp: new Date().toISOString(),
         };
       }
@@ -143,10 +158,15 @@ export class EventGateway {
           throw new RpcException(new NotFoundException('Event not found'));
         }
 
+        const response = plainToClass(EventRewardsResponseDto, {
+          eventId: event.eventId,
+          rewards: event.rewards,
+        });
+
         return {
           statusCode: HttpStatus.OK,
           message: '이벤트 보상 목록을 성공적으로 조회했습니다.',
-          data: event.rewards,
+          data: response,
           timestamp: new Date().toISOString(),
         };
       }

@@ -3,8 +3,8 @@ import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CustomLoggerService } from '@app/common/logger';
 import { RequestService } from '@app/common/services/request.service';
 import { BaseResponseDto, GatewayCommandEnum } from '@app/common/dto';
-import { Request } from '@app/common/schemas';
-import { CreateRequestDto } from '@app/common/dto/request';
+import { CreateRequestDto, RequestResponseDto } from '@app/common/dto/request';
+import { plainToClass } from 'class-transformer';
 
 interface ProxyPayload {
   body: unknown;
@@ -45,7 +45,7 @@ export class RequestGateway {
   private async handleRequests(data: {
     method: string;
     body: ProxyPayload;
-  }): Promise<BaseResponseDto<Request>> {
+  }): Promise<BaseResponseDto<RequestResponseDto>> {
     if (data.method === 'POST') {
       const createRequestDto = data.body.body as CreateRequestDto;
       const userId = data.body.headers['user-id'] as string;
@@ -55,11 +55,12 @@ export class RequestGateway {
       }
 
       const request = await this.requestService.createRequest(createRequestDto, userId);
+      const response = plainToClass(RequestResponseDto, request);
 
       return {
         statusCode: HttpStatus.CREATED,
         message: '보상 요청이 성공적으로 생성되었습니다.',
-        data: request,
+        data: response,
         timestamp: new Date().toISOString(),
       };
     }
@@ -73,7 +74,7 @@ export class RequestGateway {
     method: string;
     body: ProxyPayload;
     requestId: string;
-  }): Promise<BaseResponseDto<Request>> {
+  }): Promise<BaseResponseDto<RequestResponseDto>> {
     if (data.method === 'GET') {
       const request = await this.requestService.findRequestById(data.requestId);
 
@@ -81,10 +82,12 @@ export class RequestGateway {
         throw new RpcException(new NotFoundException('Request not found'));
       }
 
+      const response = plainToClass(RequestResponseDto, request);
+
       return {
         statusCode: HttpStatus.OK,
         message: '보상 요청을 성공적으로 조회했습니다.',
-        data: request,
+        data: response,
         timestamp: new Date().toISOString(),
       };
     }
