@@ -15,10 +15,10 @@ import mongoose from 'mongoose';
         logger.setContext('MongooseModule');
 
         const uri =
-          configService.get<string>('MONGODB_URI') ||
+          configService.get<string>('MONGO_URI') ||
           'mongodb://root:example@localhost:27017/nexon?authSource=admin';
 
-        logger.log(`MongoDB 연결: ${uri.split('@')[1] || uri}`); // 보안을 위해 사용자 정보 숨김
+        logger.log(`MongoDB 연결: ${uri.split('@')[1] || uri}`);
 
         return {
           uri,
