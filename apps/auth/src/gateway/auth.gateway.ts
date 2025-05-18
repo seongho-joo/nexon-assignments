@@ -4,6 +4,7 @@ import { CustomLoggerService } from '@app/common/logger';
 import { UserService } from '@app/common/services/user.service';
 import {
   BaseResponseDto,
+  GatewayCommandEnum,
   LoginRequestDto,
   LoginResponseDto,
   SignUpQueryDto,
@@ -40,7 +41,7 @@ export class AuthGateway {
     this.logger.setContext('AuthGateway');
   }
 
-  @MessagePattern({ cmd: 'proxy' })
+  @MessagePattern({ cmd: GatewayCommandEnum.AUTH })
   async handleProxyRequest(data: ProxyPayload): Promise<BaseResponseDto<unknown>> {
     this.logger.log(`Received proxy request for path: ${data.path}`);
 

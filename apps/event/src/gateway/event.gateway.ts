@@ -2,7 +2,7 @@ import { BadRequestException, Controller, HttpStatus, NotFoundException } from '
 import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CustomLoggerService } from '@app/common/logger';
 import { EventService } from '@app/common/services/event.service';
-import { BaseResponseDto, UserInfo } from '@app/common/dto';
+import { BaseResponseDto, GatewayCommandEnum, UserInfo } from '@app/common/dto';
 import { Event, Reward } from '@app/common/schemas';
 import { CreateEventDto, RewardDto } from '@app/common/dto/event';
 import { User } from '@app/common/decorators';
@@ -23,7 +23,7 @@ export class EventGateway {
     this.logger.setContext('EventGateway');
   }
 
-  @MessagePattern({ cmd: 'proxy' })
+  @MessagePattern({ cmd: GatewayCommandEnum.EVENT })
   async handleProxyRequest(data: {
     path: string;
     method: string;
