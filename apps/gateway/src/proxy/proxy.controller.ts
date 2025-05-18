@@ -1,9 +1,36 @@
-import { All, Controller, Get, HttpException, HttpStatus, Inject, Req, Res } from '@nestjs/common';
+import {
+  All,
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Post,
+  Req,
+  Res,
+  Query,
+} from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { Request, Response } from 'express';
 import { catchError, throwError, timeout } from 'rxjs';
 import { CustomLoggerService } from '@app/common/logger';
-import { ApiExcludeEndpoint } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiCreatedResponse,
+  ApiExcludeEndpoint,
+  ApiExtraModels,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+  getSchemaPath,
+} from '@nestjs/swagger';
+import {
+  BaseResponseDto,
+  SignUpQueryDto,
+  SignUpRequestDto,
+  SignUpResponseDto,
+} from '@app/common/dto';
 
 interface ProxyPayload {
   path: string;
@@ -26,12 +53,38 @@ export class ProxyController {
     this.logger.setContext('ProxyController');
   }
 
-  @Get('auth')
-  handleAuthRequests(@Req() req: Request, @Res() res: Response): void {
-    this.routeToMicroservice('AUTH', this.authClient, '', req, res);
+  @ApiTags('User')
+  @ApiExtraModels(BaseResponseDto, SignUpResponseDto)
+  @ApiQuery({ name: 'adminKey', required: false, description: '관리자 계정을 생성하기 위한 키' })
+  @ApiOperation({
+    summary: '사용자 등록',
+    description: '새로운 사용자를 시스템에 등록합니다.',
+  })
+  @ApiBody({ type: SignUpRequestDto })
+  @ApiCreatedResponse({
+    description: '사용자가 성공적으로 등록됨',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        { properties: { data: { $ref: getSchemaPath(SignUpResponseDto) } } },
+      ],
+    },
+  })
+  @Post('auth/sign-up')
+  handleSignUp(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Body() body: SignUpRequestDto,
+    @Query() query: SignUpQueryDto,
+  ): void {
+    void body;
+    void query;
+    this.routeToMicroservice('AUTH', this.authClient, 'sign-up', req, res);
   }
 
+  @ApiTags('Event')
   @Get('event')
+  @ApiOperation({ summary: '이벤트 서비스 루트 경로' })
   handleEventRequests(@Req() req: Request, @Res() res: Response): void {
     this.routeToMicroservice('EVENT', this.eventClient, '', req, res);
   }
@@ -113,7 +166,6 @@ export class ProxyController {
         error: (err: { message?: string; status?: number; stack?: string }) => {
           this.logger.error(
             `Error processing ${serviceName} service response: ${err.message ?? 'Unknown error'}`,
-            err.stack,
           );
           const status: number =
             typeof err.status === 'number' ? err.status : HttpStatus.INTERNAL_SERVER_ERROR;
@@ -128,11 +180,7 @@ export class ProxyController {
 
   private handleUnexpectedError(error: unknown, serviceName: string, res: Response): void {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    this.logger.error(
-      `Unexpected error routing to ${serviceName} service: ${errorMessage}`,
-      errorStack,
-    );
+    this.logger.error(`Unexpected error routing to ${serviceName} service: ${errorMessage}`);
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       error: `Gateway Error - Unable to communicate with ${serviceName} service`,
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,

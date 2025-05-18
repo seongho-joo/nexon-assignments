@@ -1,45 +1,65 @@
-import { Controller, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Controller, HttpStatus, NotFoundException } from '@nestjs/common';
 import { MessagePattern } from '@nestjs/microservices';
 import { CustomLoggerService } from '@app/common/logger';
+import { UserService } from '@app/common/services/user.service';
+import {
+  BaseResponseDto,
+  SignUpQueryDto,
+  SignUpRequestDto,
+  SignUpResponseDto,
+} from '@app/common/dto';
 
 interface ProxyPayload {
-  body: unknown;
-  query: unknown;
-  params: unknown;
-  headers: unknown;
+  path: string;
+  method: string;
+  body: {
+    body: unknown;
+    query: unknown;
+    params: unknown;
+    headers: unknown;
+  };
 }
 
 @Controller()
 export class AuthGateway {
-  constructor(private readonly logger: CustomLoggerService) {
+  constructor(
+    private readonly userService: UserService,
+    private readonly logger: CustomLoggerService,
+  ) {
     this.logger.setContext('AuthGateway');
   }
 
   @MessagePattern({ cmd: 'proxy' })
-  handleProxyRequest(data: {
-    path: string;
-    method: string;
-    body: ProxyPayload;
-  }): Record<string, unknown> {
-    this.logger.log(`Received proxy request for path: ${data.path}, method: ${data.method}`);
+  async handleProxyRequest(data: ProxyPayload): Promise<BaseResponseDto<unknown>> {
+    this.logger.log(`Received proxy request for path: ${data.path}`);
+
+    if (!data.body) {
+      throw new BadRequestException('Invalid request body');
+    }
 
     switch (data.path) {
-      case '':
-        return this.handleRoot(data);
+      case 'sign-up':
+        return this.handleSignUp(data);
       default:
-        // 알 수 없는 경로에 대한 404 응답
-        this.logger.warn(`Unknown path requested in Auth service: ${data.path}`);
-        throw new NotFoundException(`Cannot ${data.method} /${data.path}`);
+        throw new NotFoundException(`Cannot handle path: ${data.path}`);
     }
   }
 
-  private handleRoot(data: any): Record<string, unknown> {
+  private async handleSignUp(data: ProxyPayload): Promise<BaseResponseDto<SignUpResponseDto>> {
+    if (!data.body || !data.body.body) {
+      throw new BadRequestException('Invalid request body');
+    }
+
+    const { username, password, role } = data.body.body as SignUpRequestDto;
+    const { adminKey } = data.body.query as SignUpQueryDto;
+
+    const userId = await this.userService.register(username, password, role, adminKey);
+
     return {
-      message: 'Auth service API',
-      version: '1.0',
+      statusCode: HttpStatus.CREATED,
+      message: 'User registered successfully',
+      data: new SignUpResponseDto(userId),
       timestamp: new Date().toISOString(),
-      endpoints: [''],
-      method: data.method,
     };
   }
 }
