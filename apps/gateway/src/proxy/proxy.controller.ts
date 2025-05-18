@@ -389,7 +389,8 @@ export class ProxyController {
       .subscribe({
         next: data => {
           this.logger.log(`Response from ${serviceName} service for ${req.url}`);
-          res.status(HttpStatus.OK).json(data);
+          const statusCode = (data as { statusCode?: number }).statusCode || HttpStatus.OK;
+          res.status(statusCode).json(data);
         },
         error: (err: { message?: string; status?: number; stack?: string }) => {
           this.logger.error(
@@ -398,8 +399,8 @@ export class ProxyController {
           const status: number =
             typeof err.status === 'number' ? err.status : HttpStatus.INTERNAL_SERVER_ERROR;
           res.status(status).json({
-            error: err.message || 'An error occurred',
             statusCode: status,
+            message: err.message || 'An error occurred',
             timestamp: new Date().toISOString(),
           });
         },
