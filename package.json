@@ -119,7 +119,8 @@
     "collectCoverageFrom": [
       "**/*.(t|j)s",
       "!**/*.module.ts",
-      "!**/app.controller.ts",
+      "!**/auth.controller.ts",
+      "!**/event.controller.ts",
       "!**/gateway.controller.ts",
       "!**/main.ts",
       "!**/index.ts",
@@ -133,6 +134,7 @@
       "!**/*spec.ts",
       "!**/logger/**",
       "!**/filters/**",
+      "!**/schemas/**",
       "!**/exceptions/**"
     ],
     "coverageDirectory": "./coverage",
