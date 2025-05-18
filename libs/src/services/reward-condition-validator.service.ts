@@ -3,6 +3,8 @@ import { RewardConditionType, RewardCondition } from '@app/common/schemas';
 import { CustomLoggerService } from '@app/common/logger';
 import { RedisService } from '@app/common/redis';
 import { RedisEnum } from '@app/common/redis/redis.enum';
+import { RpcException } from '@nestjs/microservices';
+import { UnexpectedException } from '@app/common/exceptions/unexpected-exception';
 
 type ValidateInfo = { isValid: boolean; reason?: string };
 
@@ -15,25 +17,16 @@ export class RewardConditionValidatorService {
     this.logger.setContext('RewardConditionValidatorService');
   }
 
-  async validateCondition(
-    condition: RewardCondition,
-    userId: string,
-    metadata?: Record<string, any>,
-  ): Promise<ValidateInfo> {
+  async validateCondition(condition: RewardCondition, userId: string): Promise<ValidateInfo> {
     this.logger.log(`Validating condition type ${condition.type} for user ${userId}`);
 
     switch (condition.type) {
       case RewardConditionType.LOGIN:
         return this.validateLoginCondition(condition, userId);
       case RewardConditionType.PLAY_TIME:
-        return this.validatePlayTimeCondition(condition, metadata);
-      case RewardConditionType.LEVEL:
-        return this.validateLevelCondition(condition, metadata);
+        return this.validatePlayTimeCondition(condition, userId);
       default:
-        return {
-          isValid: false,
-          reason: `Unsupported condition type: ${condition.type}`,
-        };
+        throw new RpcException(new UnexpectedException('Unknown condition type'));
     }
   }
 
@@ -53,12 +46,12 @@ export class RewardConditionValidatorService {
     };
   }
 
-  private validatePlayTimeCondition(
+  private async validatePlayTimeCondition(
     condition: RewardCondition,
-    metadata?: Record<string, any>,
-  ): ValidateInfo {
-    // TODO: 구현 필요
-    const playTimeMinutes = metadata?.playTimeMinutes ?? 0;
+    userId: string,
+  ): Promise<ValidateInfo> {
+    const { key } = RedisEnum.PLAY_TIME.getKeyAndTTL(userId);
+    const playTimeMinutes = (await this.redisService.get<number>(key)) ?? 0;
     const isValid = playTimeMinutes >= condition.targetValue;
 
     return {
@@ -66,22 +59,6 @@ export class RewardConditionValidatorService {
       reason: isValid
         ? undefined
         : `플레이 시간이 부족합니다. (현재: ${playTimeMinutes}분, 목표: ${condition.targetValue}분)`,
-    };
-  }
-
-  private validateLevelCondition(
-    condition: RewardCondition,
-    metadata?: Record<string, any>,
-  ): ValidateInfo {
-    // TODO: 구현 필요
-    const userLevel = metadata?.level ?? 0;
-    const isValid = userLevel >= condition.targetValue;
-
-    return {
-      isValid,
-      reason: isValid
-        ? undefined
-        : `레벨이 부족합니다. (현재: ${userLevel}, 목표: ${condition.targetValue})`,
     };
   }
 }

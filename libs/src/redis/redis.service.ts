@@ -48,10 +48,10 @@ export class RedisService {
     }
   }
 
-  async increment(key: string): Promise<number> {
+  async increment(key: string, value = 1): Promise<number> {
     try {
       return await new Promise<number>((resolve, reject) => {
-        this.client.incrby(key, (err, reply) => {
+        this.client.incrby(key, value, (err, reply) => {
           if (err) reject(err);
           else resolve(reply);
         });
@@ -145,6 +145,58 @@ export class RedisService {
       });
     } catch (error) {
       this.logger.error(`Error getting cardinality of Redis Set (key: ${key})`, error);
+      throw error;
+    }
+  }
+
+  async scan(pattern: string, count = 10): Promise<string[]> {
+    try {
+      let cursor = '0';
+      const keys: string[] = [];
+
+      do {
+        const [newCursor, scanKeys] = await new Promise<[string, string[]]>((resolve, reject) => {
+          this.client.scan(cursor, 'MATCH', pattern, 'COUNT', count, (err, reply) => {
+            if (err) reject(err);
+            else resolve([reply[0], reply[1]]);
+          });
+        });
+
+        cursor = newCursor;
+        keys.push(...scanKeys);
+      } while (cursor !== '0');
+
+      return keys;
+    } catch (error) {
+      this.logger.error(`Error scanning Redis keys (pattern: ${pattern})`, error);
+      throw error;
+    }
+  }
+
+  async scanAsync(
+    pattern: string,
+    count = 10,
+    callback: (keys: string[]) => Promise<void>,
+  ): Promise<void> {
+    try {
+      let cursor = '0';
+
+      do {
+        const [newCursor, scanKeys] = await new Promise<[string, string[]]>((resolve, reject) => {
+          this.client.scan(cursor, 'MATCH', pattern, 'COUNT', count, (err, reply) => {
+            if (err) reject(err);
+            else resolve([reply[0], reply[1]]);
+          });
+        });
+
+        cursor = newCursor;
+        
+        if (scanKeys.length > 0) {
+          await callback(scanKeys);
+        }
+      } while (cursor !== '0');
+    } catch (error) {
+      this.logger.error(`Error scanning Redis keys (pattern: ${pattern})`, error);
       throw error;
     }
   }

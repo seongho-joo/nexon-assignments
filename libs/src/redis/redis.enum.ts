@@ -38,14 +38,26 @@ export class RedisEnum {
 
   static readonly CONTINUOUS_LOGIN_AT = new RedisEnum(
     RedisDataStructureEnum.STRING,
-    'condition:continuous:login:at',
+    'condition:continuous_login:at',
     RedisTTLEnum.DAY,
   );
 
   static readonly CONTINUOUS_LOGIN_COUNT = new RedisEnum(
     RedisDataStructureEnum.STRING,
-    'condition:continuous:login:count',
+    'condition:continuous_login:count',
     RedisTTLEnum.DAY,
+  );
+
+  static readonly PLAY_TIME = new RedisEnum(
+    RedisDataStructureEnum.STRING,
+    'condition:play_time',
+    RedisTTLEnum.FOREVER,
+  );
+
+  static readonly PLAY_TIME_SESSION_START = new RedisEnum(
+    RedisDataStructureEnum.STRING,
+    'condition:play_time:session_start',
+    RedisTTLEnum.FOREVER,
   );
 
   private constructor(

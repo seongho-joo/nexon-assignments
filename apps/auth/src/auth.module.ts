@@ -13,6 +13,7 @@ import { RedisModule } from '@app/common/redis';
 import { LoggerModule } from '@app/common/logger';
 import { AuthService } from '@app/common/services/auth.service';
 import { JwtStrategy } from '@app/common/strategies/jwt.strategy';
+import { PlayTimeTrackerService } from '@app/common/services/play-time-tracker.service';
 
 @Module({
   imports: [
@@ -48,6 +49,6 @@ import { JwtStrategy } from '@app/common/strategies/jwt.strategy';
     LoggerModule,
   ],
   controllers: [AuthController, AuthGateway],
-  providers: [AuthService, UserService, UserRepository, JwtStrategy],
+  providers: [AuthService, UserService, UserRepository, JwtStrategy, PlayTimeTrackerService],
 })
 export class AuthModule {}

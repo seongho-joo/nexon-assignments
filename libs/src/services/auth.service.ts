@@ -14,6 +14,7 @@ import {
   RolePermissionsResponseDto,
   SetRolePermissionDto,
 } from '@app/common/dto/role/role-permission.dto';
+import { PlayTimeTrackerService } from '@app/common/services/play-time-tracker.service';
 
 interface TokenPayload extends UserInfo {
   userId: string;
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly redisService: RedisService,
+    private readonly pttService: PlayTimeTrackerService,
   ) {}
 
   async validateUser(username: string, password: string): Promise<User> {
@@ -56,6 +58,7 @@ export class AuthService {
 
     await this.storeToken(user.id, accessToken);
     await this.recordUserLogin(user.id);
+    await this.pttService.startSession(user.id);
 
     const userInfo: UserInfo = {
       id: user.id,
@@ -105,6 +108,7 @@ export class AuthService {
 
   async logout(userId: string): Promise<void> {
     const key = this.getAuthTokenKey(userId);
+    await this.pttService.endSession(userId);
     await this.redisService.delete(key);
   }
 
