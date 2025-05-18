@@ -51,7 +51,7 @@ export class RolesGuard implements CanActivate {
         return true;
       }
 
-      const prefix = `${user.role}:${method}`;
+      const prefix = `${user.role.toUpperCase()}:${method}`;
       const { key } = RedisEnum.AUTHORIZATION_ROLE.getKeyAndTTL(prefix);
       const allowedPaths = await this.redisService.sMembers(key);
 

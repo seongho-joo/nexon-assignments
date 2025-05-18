@@ -16,6 +16,8 @@ import {
   RolePermissionsResponseDto,
   SetRolePermissionDto,
 } from '@app/common/dto/role/role-permission.dto';
+import { User } from '@app/common/schemas';
+import { UpdateUserRoleDto } from '@app/common/dto/role';
 
 interface ProxyPayload {
   path: string;
@@ -53,6 +55,8 @@ export class AuthGateway {
         return this.handleLogin(data);
       case 'role-permissions':
         return this.handleRolePermissions(data);
+      case 'user-role':
+        return this.handleUpdateUserRole(data);
       default:
         throw new NotFoundException(`Cannot handle path: ${data.path}`);
     }
@@ -94,7 +98,7 @@ export class AuthGateway {
   }
 
   private async handleRolePermissions(data: ProxyPayload): Promise<BaseResponseDto<unknown>> {
-    if (!data.body || !data.body.body) {
+    if (!data.body) {
       throw new RpcException(new BadRequestException('Invalid request body'));
     }
 
@@ -102,7 +106,7 @@ export class AuthGateway {
       case 'POST':
         return this.setRolePermission(data.body.body as SetRolePermissionDto);
       case 'GET':
-        return this.getRolePermissions(data.body.body as GetRolePermissionsDto);
+        return this.getRolePermissions(data.body.query as GetRolePermissionsDto);
       case 'DELETE':
         return this.removeRolePermission(data.body.body as SetRolePermissionDto);
       default:
@@ -141,6 +145,22 @@ export class AuthGateway {
       statusCode: HttpStatus.OK,
       message: 'Role permission removed successfully',
       data: undefined,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  private async handleUpdateUserRole(data: ProxyPayload): Promise<BaseResponseDto<User>> {
+    if (!data.body || !data.body.body) {
+      throw new RpcException(new BadRequestException('Invalid request body'));
+    }
+
+    const { userId, newRole } = data.body.body as UpdateUserRoleDto;
+    const user = await this.userService.updateRole(userId, newRole);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'User role updated successfully',
+      data: user,
       timestamp: new Date().toISOString(),
     };
   }

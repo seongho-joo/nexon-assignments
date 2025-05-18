@@ -3,6 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserRole } from '@app/common/schemas';
 import { CustomLoggerService } from '@app/common/logger';
+import { RpcException } from '@nestjs/microservices';
+import { InternalServerException } from '@app/common/exceptions';
 
 export interface CreateUserParams {
   username: string;
@@ -40,5 +42,13 @@ export class UserRepository {
 
   async findById(userId: string): Promise<User | null> {
     return this.userModel.findOne({ userId }).exec();
+  }
+
+  async updateRole(userId: string, role: UserRole): Promise<User> {
+    const user = await this.userModel.findOneAndUpdate({ userId }, { role }, { new: true }).exec();
+    if (!user) {
+      throw new RpcException(new InternalServerException('User not found'));
+    }
+    return user;
   }
 }

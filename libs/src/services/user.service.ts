@@ -68,4 +68,21 @@ export class UserService {
       isActive: true,
     });
   }
+
+  async updateRole(userId: string, newRole: UserRole): Promise<User> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new RpcException(new BadRequestException('User not found'));
+    }
+
+    if (user.role === UserRole.ADMIN) {
+      throw new RpcException(new BadRequestException('Cannot modify admin user role'));
+    }
+
+    if (newRole === UserRole.ADMIN) {
+      throw new RpcException(new BadRequestException('Cannot assign admin role to users'));
+    }
+
+    return this.userRepository.updateRole(userId, newRole);
+  }
 }

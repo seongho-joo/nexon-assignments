@@ -11,6 +11,7 @@ import {
   Res,
   Query,
   Delete,
+  Put,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { Request, Response } from 'express';
@@ -42,6 +43,7 @@ import {
   RolePermissionsResponseDto,
   SetRolePermissionDto,
 } from '@app/common/dto/role/role-permission.dto';
+import { UpdateUserRoleDto } from '@app/common/dto/role';
 
 interface ProxyPayload {
   path: string;
@@ -192,10 +194,51 @@ export class ProxyController {
     this.routeToMicroservice('AUTH', this.authClient, 'role-permissions', req, res);
   }
 
+  @ApiTags('Auth')
+  @ApiOperation({
+    summary: '사용자 역할 변경',
+    description: '특정 사용자의 역할을 변경합니다.',
+  })
+  @ApiBody({ type: UpdateUserRoleDto })
+  @ApiExtraModels(BaseResponseDto)
+  @ApiCreatedResponse({
+    description: '사용자 역할이 성공적으로 변경됨',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        {
+          properties: {
+            data: {
+              type: 'object',
+              properties: {
+                userId: { type: 'string' },
+                role: { type: 'string', enum: Object.values(UserRole) },
+              },
+            },
+          },
+        },
+      ],
+    },
+  })
+  @Roles(UserRole.ADMIN)
+  @Put('auth/user-role')
+  async updateUserRole(
+    @Body() dto: UpdateUserRoleDto,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    void dto;
+    this.routeToMicroservice('AUTH', this.authClient, 'user-role', req, res);
+  }
+
   @ApiTags('Event')
   @Get('event')
   @ApiOperation({ summary: '이벤트 서비스 루트 경로' })
-  handleEventRequests(@Req() req: Request, @Res() res: Response): void {
+  handleEventRequests(
+    @Body() dto: UpdateUserRoleDto,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): void {
     this.routeToMicroservice('EVENT', this.eventClient, '', req, res);
   }
 
@@ -269,9 +312,10 @@ export class ProxyController {
         }),
       )
       .subscribe({
-        next: data => {
+        next: (data: { statusCode?: number } & Record<string, unknown>) => {
           this.logger.log(`Response from ${serviceName} service for ${req.url}`);
-          res.status(HttpStatus.OK).json(data);
+          const status = data.statusCode || HttpStatus.OK;
+          res.status(status).json(data);
         },
         error: (err: { message?: string; status?: number; stack?: string }) => {
           this.logger.error(
@@ -280,8 +324,8 @@ export class ProxyController {
           const status: number =
             typeof err.status === 'number' ? err.status : HttpStatus.INTERNAL_SERVER_ERROR;
           res.status(status).json({
-            error: err.message || 'An error occurred',
             statusCode: status,
+            message: err.message || 'An error occurred',
             timestamp: new Date().toISOString(),
           });
         },
