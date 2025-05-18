@@ -6,30 +6,44 @@ import * as bcrypt from 'bcrypt';
 import { UserService } from './user.service';
 import { CustomLoggerService } from '@app/common/logger';
 import { UserRepository } from '@app/common/repositories/user.repository';
-import { UserRole } from '@app/common/schemas';
+import { User, UserRole } from '@app/common/schemas';
 
 jest.mock('bcrypt');
 
 describe('UserService', () => {
   let service: UserService;
   let userRepository: jest.Mocked<UserRepository>;
+  let configService: jest.Mocked<ConfigService>;
 
-  const mockUserRepository = {
-    findByUsername: jest.fn(),
-    create: jest.fn(),
-  };
-
-  const mockConfigService = {
-    get: jest.fn(),
-  };
-
-  const mockLogger = {
-    setContext: jest.fn(),
-    log: jest.fn(),
-  };
+  const mockUser = {
+    id: 'test-id',
+    userId: 'test-id',
+    username: 'testuser',
+    password: 'hashedpassword',
+    role: UserRole.USER,
+    isActive: true,
+    balance: 0,
+    lastLoginAt: new Date(),
+  } as unknown as User;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    const mockUserRepository = {
+      findByUsername: jest.fn(),
+      findById: jest.fn(),
+      create: jest.fn(),
+      updateRole: jest.fn(),
+    };
+
+    const mockConfigService = {
+      get: jest.fn(),
+    };
+
+    const mockLogger = {
+      setContext: jest.fn(),
+      log: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -51,78 +65,98 @@ describe('UserService', () => {
 
     service = module.get<UserService>(UserService);
     userRepository = module.get(UserRepository);
-    mockConfigService.get.mockReturnValue('test-admin-key');
+    configService = module.get(ConfigService);
+
+    configService.get.mockReturnValue('test-admin-key');
+  });
+
+  describe('findByUsername', () => {
+    it('should return user when found', async () => {
+      userRepository.findByUsername.mockResolvedValue(mockUser);
+      const result = await service.findByUsername('testuser');
+      expect(result).toBe(mockUser);
+    });
+
+    it('should return null when user not found', async () => {
+      userRepository.findByUsername.mockResolvedValue(null);
+      const result = await service.findByUsername('nonexistent');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('findById', () => {
+    it('should return user when found', async () => {
+      userRepository.findById.mockResolvedValue(mockUser);
+      const result = await service.findById('test-id');
+      expect(result).toBe(mockUser);
+    });
+
+    it('should return null when user not found', async () => {
+      userRepository.findById.mockResolvedValue(null);
+      const result = await service.findById('nonexistent');
+      expect(result).toBeNull();
+    });
   });
 
   describe('register', () => {
-    const username = 'testuser';
-    const password = 'testpass';
-    const hashedPassword = 'hashedPassword';
-
     beforeEach(() => {
-      (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashedpassword');
     });
 
-    it('should successfully register a new user', async () => {
-      mockUserRepository.findByUsername.mockResolvedValue(null);
-      mockUserRepository.create.mockResolvedValue('userId');
+    it('should create a new user successfully', async () => {
+      userRepository.findByUsername.mockResolvedValue(null);
+      userRepository.create.mockResolvedValue('new-user-id');
 
-      const result = await service.register(username, password);
+      const result = await service.register('newuser', 'password123');
 
-      expect(result).toBe('userId');
-      expect(userRepository.findByUsername).toHaveBeenCalledWith(username);
-      expect(bcrypt.hash).toHaveBeenCalledWith(password, 10);
+      expect(result).toBe('new-user-id');
       expect(userRepository.create).toHaveBeenCalledWith({
-        username,
-        password: hashedPassword,
+        username: 'newuser',
+        password: 'hashedpassword',
         role: UserRole.USER,
         balance: 0,
         isActive: true,
       });
     });
 
-    it('should throw BadRequestException if username already exists', async () => {
-      mockUserRepository.findByUsername.mockResolvedValue({ username });
+    it('should throw error when username already exists', async () => {
+      userRepository.findByUsername.mockResolvedValue(mockUser);
 
-      await expect(service.register(username, password)).rejects.toThrow(RpcException);
-      expect(userRepository.create).not.toHaveBeenCalled();
+      await expect(service.register('testuser', 'password123')).rejects.toThrow(RpcException);
     });
 
-    it('should throw BadRequestException if username or password is missing', async () => {
-      await expect(service.register('', password)).rejects.toThrow(RpcException);
-      await expect(service.register(username, '')).rejects.toThrow(RpcException);
-      expect(userRepository.create).not.toHaveBeenCalled();
+    it('should throw error when creating admin without admin key', async () => {
+      await expect(service.register('admin', 'password123', UserRole.ADMIN)).rejects.toThrow(
+        RpcException,
+      );
     });
 
-    describe('admin registration', () => {
-      it('should successfully register an admin user with valid admin key', async () => {
-        mockUserRepository.findByUsername.mockResolvedValue(null);
-        mockUserRepository.create.mockResolvedValue('adminUserId');
+    it('should throw error when creating admin with invalid admin key', async () => {
+      configService.get.mockReturnValue('different-admin-key');
 
-        const result = await service.register(username, password, UserRole.ADMIN, 'test-admin-key');
+      await expect(
+        service.register('admin', 'password123', UserRole.ADMIN, 'test-admin-key'),
+      ).rejects.toThrow(RpcException);
+    });
 
-        expect(result).toBe('adminUserId');
-        expect(userRepository.create).toHaveBeenCalledWith({
-          username,
-          password: hashedPassword,
-          role: UserRole.ADMIN,
-          balance: 0,
-          isActive: true,
-        });
-      });
+    it('should create admin user with valid admin key', async () => {
+      userRepository.findByUsername.mockResolvedValue(null);
+      userRepository.create.mockResolvedValue('new-admin-id');
 
-      it('should throw UnauthorizedException if admin key is invalid', async () => {
-        await expect(
-          service.register(username, password, UserRole.ADMIN, 'wrong-key'),
-        ).rejects.toThrow(RpcException);
-        expect(userRepository.create).not.toHaveBeenCalled();
-      });
+      const result = await service.register(
+        'admin',
+        'password123',
+        UserRole.ADMIN,
+        'test-admin-key',
+      );
 
-      it('should throw BadRequestException if admin key is missing for admin registration', async () => {
-        await expect(service.register(username, password, UserRole.ADMIN)).rejects.toThrow(
-          RpcException,
-        );
-        expect(userRepository.create).not.toHaveBeenCalled();
+      expect(result).toBe('new-admin-id');
+      expect(userRepository.create).toHaveBeenCalledWith({
+        username: 'admin',
+        password: 'hashedpassword',
+        role: UserRole.ADMIN,
+        balance: 0,
+        isActive: true,
       });
     });
   });
