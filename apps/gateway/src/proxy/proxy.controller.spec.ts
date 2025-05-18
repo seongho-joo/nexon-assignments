@@ -167,25 +167,126 @@ describe('ProxyController', () => {
     });
   });
 
-  describe('handleNotFound', () => {
-    it('should return 404 for unknown paths', () => {
-      const notFoundRequest = {
+  describe('Event Endpoints', () => {
+    const mockEventResponse = {
+      statusCode: 200,
+      message: '이벤트를 성공적으로 조회했습니다.',
+      data: {
+        eventId: 'test-event-id',
+        title: '테스트 이벤트',
+        description: '테스트 이벤트입니다.',
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    const mockRequest = {
+      method: 'GET',
+      url: '/events',
+      body: {},
+      query: {},
+      params: {},
+      headers: {},
+      path: '/events',
+    } as unknown as Request;
+
+    const mockResponse = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    } as unknown as Response;
+
+    it('should handle get all events request', () => {
+      eventClient.send.mockReturnValue(of(mockEventResponse));
+
+      controller.handleGetEvents(mockRequest, mockResponse);
+
+      expect(eventClient.send).toHaveBeenCalledWith(
+        { cmd: 'proxy' },
+        expect.objectContaining({
+          path: 'events',
+          method: 'GET',
+        }),
+      );
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(mockResponse.json).toHaveBeenCalledWith(mockEventResponse);
+    });
+
+    it('should handle get event by id request', () => {
+      const eventRequest = {
         ...mockRequest,
+        params: { eventId: 'test-event-id' },
+      } as unknown as Request;
+
+      eventClient.send.mockReturnValue(of(mockEventResponse));
+
+      controller.handleGetEventById('test-event-id', eventRequest, mockResponse);
+
+      expect(eventClient.send).toHaveBeenCalledWith(
+        { cmd: 'proxy' },
+        expect.objectContaining({
+          path: 'events/test-event-id',
+          method: 'GET',
+        }),
+      );
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(mockResponse.json).toHaveBeenCalledWith(mockEventResponse);
+    });
+
+    it('should handle get event rewards request', () => {
+      const rewardsRequest = {
+        ...mockRequest,
+        params: { eventId: 'test-event-id' },
+      } as unknown as Request;
+
+      const mockRewardsResponse = {
+        ...mockEventResponse,
+        data: [
+          {
+            name: '테스트 보상',
+            description: '테스트 보상입니다.',
+            rewardPoint: 1000,
+          },
+        ],
+      };
+
+      eventClient.send.mockReturnValue(of(mockRewardsResponse));
+
+      controller.handleGetEventRewards('test-event-id', rewardsRequest, mockResponse);
+
+      expect(eventClient.send).toHaveBeenCalledWith(
+        { cmd: 'proxy' },
+        expect.objectContaining({
+          path: 'events/test-event-id/rewards',
+          method: 'GET',
+        }),
+      );
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(mockResponse.json).toHaveBeenCalledWith(mockRewardsResponse);
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle 404 Not Found', () => {
+      const mockRequest = {
         method: 'GET',
         url: '/unknown',
         path: '/unknown',
       } as unknown as Request;
 
-      controller.handleNotFound(notFoundRequest, mockResponse);
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as unknown as Response;
 
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
-      expect(mockResponse.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          statusCode: HttpStatus.NOT_FOUND,
-          message: 'Cannot GET /unknown',
-          code: 'NOT_FOUND',
-        }),
-      );
+      controller.handleNotFound(mockRequest, mockResponse);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(404);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        statusCode: 404,
+        message: 'Cannot GET /unknown',
+        code: 'NOT_FOUND',
+        timestamp: expect.any(String),
+        path: '/unknown',
+      });
     });
   });
 }); 
