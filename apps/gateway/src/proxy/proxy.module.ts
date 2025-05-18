@@ -14,7 +14,7 @@ import { CommonModule } from '@app/common';
         useFactory: (configService: ConfigService) => ({
           transport: Transport.TCP,
           options: {
-            host: configService.get('AUTH_HOST') || 'localhost',
+            host: configService.get('AUTH_HOST') || '127.0.0.1',
             port: configService.get('AUTH_MICROSERVICE_PORT') || 4001,
           },
         }),
@@ -26,7 +26,7 @@ import { CommonModule } from '@app/common';
         useFactory: (configService: ConfigService) => ({
           transport: Transport.TCP,
           options: {
-            host: configService.get('EVENT_HOST') || 'localhost',
+            host: configService.get('EVENT_HOST') || '127.0.0.1',
             port: configService.get('EVENT_MICROSERVICE_PORT') || 4002,
           },
         }),

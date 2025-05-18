@@ -11,6 +11,11 @@ import {
   SignUpResponseDto,
 } from '@app/common/dto';
 import { AuthService } from '@app/common/services/auth.service';
+import {
+  GetRolePermissionsDto,
+  RolePermissionsResponseDto,
+  SetRolePermissionDto,
+} from '@app/common/dto/role/role-permission.dto';
 
 interface ProxyPayload {
   path: string;
@@ -46,6 +51,8 @@ export class AuthGateway {
         return this.handleSignUp(data);
       case 'login':
         return this.handleLogin(data);
+      case 'role-permissions':
+        return this.handleRolePermissions(data);
       default:
         throw new NotFoundException(`Cannot handle path: ${data.path}`);
     }
@@ -82,6 +89,58 @@ export class AuthGateway {
       statusCode: HttpStatus.OK,
       message: 'Login successful',
       data: result,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  private async handleRolePermissions(data: ProxyPayload): Promise<BaseResponseDto<unknown>> {
+    if (!data.body || !data.body.body) {
+      throw new RpcException(new BadRequestException('Invalid request body'));
+    }
+
+    switch (data.method) {
+      case 'POST':
+        return this.setRolePermission(data.body.body as SetRolePermissionDto);
+      case 'GET':
+        return this.getRolePermissions(data.body.body as GetRolePermissionsDto);
+      case 'DELETE':
+        return this.removeRolePermission(data.body.body as SetRolePermissionDto);
+      default:
+        throw new RpcException(new BadRequestException('Invalid method'));
+    }
+  }
+
+  private async setRolePermission(dto: SetRolePermissionDto): Promise<BaseResponseDto<void>> {
+    await this.authService.setRolePermission(dto);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: `Role permission ${dto.allow ? 'added' : 'removed'} successfully`,
+      data: undefined,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  private async getRolePermissions(
+    dto: GetRolePermissionsDto,
+  ): Promise<BaseResponseDto<RolePermissionsResponseDto>> {
+    const permissions = await this.authService.getRolePermissions(dto);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Role permissions retrieved successfully',
+      data: permissions,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  private async removeRolePermission(dto: SetRolePermissionDto): Promise<BaseResponseDto<void>> {
+    await this.authService.removeRolePermission(dto);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Role permission removed successfully',
+      data: undefined,
       timestamp: new Date().toISOString(),
     };
   }

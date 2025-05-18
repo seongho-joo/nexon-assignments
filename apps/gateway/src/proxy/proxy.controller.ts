@@ -10,6 +10,7 @@ import {
   Req,
   Res,
   Query,
+  Delete,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { Request, Response } from 'express';
@@ -32,8 +33,15 @@ import {
   SignUpResponseDto,
   LoginRequestDto,
   LoginResponseDto,
+  UserInfo,
 } from '@app/common/dto';
-import { Public } from '@app/common/decorators/public.decorator';
+import { Public, Roles, User } from '@app/common/decorators';
+import { UserRole } from '@app/common/schemas';
+import {
+  GetRolePermissionsDto,
+  RolePermissionsResponseDto,
+  SetRolePermissionDto,
+} from '@app/common/dto/role/role-permission.dto';
 
 interface ProxyPayload {
   path: string;
@@ -57,7 +65,7 @@ export class ProxyController {
   }
 
   @Public()
-  @ApiTags('User')
+  @ApiTags('Auth')
   @ApiExtraModels(BaseResponseDto, SignUpResponseDto)
   @ApiQuery({ name: 'adminKey', required: false, description: '관리자 계정을 생성하기 위한 키' })
   @ApiOperation({
@@ -87,7 +95,7 @@ export class ProxyController {
   }
 
   @Public()
-  @ApiTags('User')
+  @ApiTags('Auth')
   @ApiExtraModels(BaseResponseDto, LoginResponseDto)
   @ApiOperation({
     summary: '사용자 로그인',
@@ -107,6 +115,81 @@ export class ProxyController {
   handleLogin(@Req() req: Request, @Res() res: Response, @Body() body: LoginRequestDto): void {
     void body;
     this.routeToMicroservice('AUTH', this.authClient, 'login', req, res);
+  }
+
+  @ApiTags('Auth')
+  @ApiOperation({
+    summary: '역할 권한 설정',
+    description: '특정 역할에 대한 API 접근 권한을 설정합니다.',
+  })
+  @ApiBody({ type: SetRolePermissionDto })
+  @ApiExtraModels(BaseResponseDto)
+  @ApiCreatedResponse({
+    description: '권한이 성공적으로 설정됨',
+    schema: {
+      allOf: [{ $ref: getSchemaPath(BaseResponseDto) }, { properties: { data: { type: 'null' } } }],
+    },
+  })
+  @Roles(UserRole.ADMIN)
+  @Post('auth/role-permissions')
+  setRolePermission(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Body() body: SetRolePermissionDto,
+  ): void {
+    void body;
+    this.routeToMicroservice('AUTH', this.authClient, 'role-permissions', req, res);
+  }
+
+  @ApiTags('Auth')
+  @ApiOperation({
+    summary: '역할 권한 조회',
+    description: '특정 역할의 API 접근 권한 목록을 조회합니다.',
+  })
+  @ApiBody({ type: GetRolePermissionsDto })
+  @ApiExtraModels(BaseResponseDto, RolePermissionsResponseDto)
+  @ApiCreatedResponse({
+    description: '권한 목록 조회 성공',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        { properties: { data: { $ref: getSchemaPath(RolePermissionsResponseDto) } } },
+      ],
+    },
+  })
+  @Roles(UserRole.ADMIN)
+  @Get('auth/role-permissions')
+  getRolePermissions(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Body() body: GetRolePermissionsDto,
+  ): void {
+    void body;
+    this.routeToMicroservice('AUTH', this.authClient, 'role-permissions', req, res);
+  }
+
+  @ApiTags('Auth')
+  @ApiOperation({
+    summary: '역할 권한 삭제',
+    description: '특정 역할의 API 접근 권한을 삭제합니다.',
+  })
+  @ApiBody({ type: SetRolePermissionDto })
+  @ApiExtraModels(BaseResponseDto)
+  @ApiCreatedResponse({
+    description: '권한이 성공적으로 삭제됨',
+    schema: {
+      allOf: [{ $ref: getSchemaPath(BaseResponseDto) }, { properties: { data: { type: 'null' } } }],
+    },
+  })
+  @Roles(UserRole.ADMIN)
+  @Delete('auth/role-permissions')
+  removeRolePermission(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Body() body: SetRolePermissionDto,
+  ): void {
+    void body;
+    this.routeToMicroservice('AUTH', this.authClient, 'role-permissions', req, res);
   }
 
   @ApiTags('Event')

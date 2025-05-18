@@ -5,6 +5,7 @@ import { ForbiddenException, UnauthorizedException } from '@app/common/exception
 import { UserRole } from '@app/common/schemas';
 import { UserInfo } from '@app/common/dto/user/types';
 import { RedisEnum } from '@app/common/redis/redis.enum';
+import { ROLES_KEY } from '@app/common/decorators/roles.decorator';
 
 interface RequestWithUser extends Request {
   user: UserInfo;
@@ -40,17 +41,29 @@ export class RolesGuard implements CanActivate {
       throw new UnauthorizedException('Authentication required');
     }
 
-    // Admin has full access to all endpoints
-    if (user.role === UserRole.ADMIN) {
+    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (!requiredRoles) {
+      if (user.role === UserRole.ADMIN) {
+        return true;
+      }
+
+      const prefix = `${user.role}:${method}`;
+      const { key } = RedisEnum.AUTHORIZATION_ROLE.getKeyAndTTL(prefix);
+      const allowedPaths = await this.redisService.sMembers(key);
+
+      if (!allowedPaths.includes(path)) {
+        throw new ForbiddenException('Access denied for this role');
+      }
+
       return true;
     }
 
-    const prefix = `${user.role}:${method}`;
-    const { key } = RedisEnum.AUTHORIZATION_ROLE.getKeyAndTTL(prefix);
-    const allowedPaths = await this.redisService.sMembers(key);
-
-    if (!allowedPaths.includes(path)) {
-      throw new ForbiddenException('Access denied for this role');
+    if (!requiredRoles.includes(user.role as UserRole)) {
+      throw new ForbiddenException('Access denied: insufficient role');
     }
 
     return true;

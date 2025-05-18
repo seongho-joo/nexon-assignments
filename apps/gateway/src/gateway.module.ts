@@ -10,6 +10,10 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from '@app/common/schemas';
 import { UserService } from '@app/common/services/user.service';
 import { UserRepository } from '@app/common/repositories/user.repository';
+import { PassportModule } from '@nestjs/passport';
+import { JwtStrategy } from '@app/common/strategies/jwt.strategy';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from '@app/common/guards';
 
 @Module({
   imports: [
@@ -20,6 +24,7 @@ import { UserRepository } from '@app/common/repositories/user.repository';
       isGlobal: true,
       cache: true,
     }),
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
@@ -42,6 +47,15 @@ import { UserRepository } from '@app/common/repositories/user.repository';
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
   ],
   controllers: [GatewayController],
-  providers: [AuthService, UserService, UserRepository],
+  providers: [
+    AuthService,
+    UserService,
+    UserRepository,
+    JwtStrategy,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
 })
 export class GatewayModule {}

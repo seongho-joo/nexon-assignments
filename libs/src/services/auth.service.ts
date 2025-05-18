@@ -4,11 +4,16 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UserService } from '@app/common/services/user.service';
 import { RedisService } from '@app/common/redis';
-import { User } from '@app/common/schemas';
+import { User, UserRole } from '@app/common/schemas';
 import { RpcException } from '@nestjs/microservices';
-import { UnauthorizedException } from '@app/common/exceptions';
+import { ForbiddenException, UnauthorizedException } from '@app/common/exceptions';
 import { RedisEnum } from '@app/common/redis/redis.enum';
 import { UserInfo } from '@app/common/dto/user/types';
+import {
+  GetRolePermissionsDto,
+  RolePermissionsResponseDto,
+  SetRolePermissionDto,
+} from '@app/common/dto/role/role-permission.dto';
 
 interface TokenPayload extends UserInfo {
   userId: string;
@@ -104,12 +109,62 @@ export class AuthService {
   }
 
   private async storeToken(userId: string, token: string): Promise<void> {
-    const key = this.getAuthTokenKey(userId);
-    await this.redisService.set(key, token, this.TOKEN_EXPIRATION);
+    const { key, ttl } = RedisEnum.AUTH_TOKEN.getKeyAndTTL(userId);
+    await this.redisService.set(key, token, ttl);
   }
 
   private getAuthTokenKey(userId: string): string {
     const { key } = RedisEnum.AUTH_TOKEN.getKeyAndTTL(userId);
     return key;
+  }
+
+  private getRoleKey(role: string, method: string): string {
+    const prefix = `${role.toUpperCase()}:${method}`;
+    const { key } = RedisEnum.AUTHORIZATION_ROLE.getKeyAndTTL(prefix);
+    return key;
+  }
+
+  async setRolePermission(dto: SetRolePermissionDto): Promise<void> {
+    const { role, method, path, allow } = dto;
+
+    if (role === UserRole.ADMIN) {
+      throw new RpcException(new ForbiddenException('Cannot modify admin permissions'));
+    }
+
+    const key = this.getRoleKey(role, method);
+
+    if (allow) {
+      await this.redisService.sAdd(key, path);
+    } else {
+      await this.redisService.sRem(key, path);
+    }
+  }
+
+  async getRolePermissions(dto: GetRolePermissionsDto): Promise<RolePermissionsResponseDto> {
+    const { role, method } = dto;
+    const permissions: RolePermissionsResponseDto = {};
+
+    if (method) {
+      const key = this.getRoleKey(role, method);
+      permissions[method] = await this.redisService.sMembers(key);
+    } else {
+      for (const method of ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']) {
+        const key = this.getRoleKey(role, method);
+        permissions[method] = await this.redisService.sMembers(key);
+      }
+    }
+
+    return permissions;
+  }
+
+  async removeRolePermission(dto: SetRolePermissionDto): Promise<void> {
+    const { role, method, path } = dto;
+
+    if (role === UserRole.ADMIN) {
+      throw new RpcException(new ForbiddenException('Cannot modify admin permissions'));
+    }
+
+    const key = this.getRoleKey(role, method);
+    await this.redisService.sRem(key, path);
   }
 }

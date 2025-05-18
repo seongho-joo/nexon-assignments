@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
-import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ExecutionContext, Injectable } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { AuthService } from '../services/auth.service';
+import { AuthService } from '@app/common/services/auth.service';
 import { Reflector } from '@nestjs/core';
+import { UnauthorizedException } from '@app/common/exceptions';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -25,7 +26,12 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     }
 
     // First, check JWT validity using Passport
-    const isJwtValid = await super.canActivate(context);
+    let isJwtValid: boolean;
+    try {
+      isJwtValid = (await super.canActivate(context)) as boolean;
+    } catch (err) {
+      throw new UnauthorizedException(err instanceof Error ? err.message : 'Unauthorized');
+    }
     if (!isJwtValid) {
       return false;
     }
