@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsNotEmpty, IsNumber, IsString, Min, ValidateNested } from 'class-validator';
 import { RewardConditionDto } from './reward-condition.dto';
+import { Reward } from '@app/common/schemas';
 
 export class RewardDto {
   @ApiProperty({
@@ -35,4 +36,13 @@ export class RewardDto {
   @ValidateNested()
   @Type(() => RewardConditionDto)
   condition: RewardConditionDto;
-} 
+
+  toSchema(): Reward {
+    return {
+      name: this.name,
+      rewardPoint: this.rewardPoint,
+      description: this.description,
+      condition: this.condition.toSchema(),
+    };
+  }
+}

@@ -2,17 +2,17 @@ import {
   All,
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   HttpStatus,
   Inject,
+  Param,
   Post,
+  Put,
+  Query,
   Req,
   Res,
-  Query,
-  Delete,
-  Put,
-  Param,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { Request, Response } from 'express';
@@ -30,11 +30,11 @@ import {
 } from '@nestjs/swagger';
 import {
   BaseResponseDto,
+  LoginRequestDto,
+  LoginResponseDto,
   SignUpQueryDto,
   SignUpRequestDto,
   SignUpResponseDto,
-  LoginRequestDto,
-  LoginResponseDto,
   UserInfo,
 } from '@app/common/dto';
 import { Public, Roles, User } from '@app/common/decorators';
@@ -315,6 +315,74 @@ export class ProxyController {
     void dto;
     req.params['eventId'] = eventId;
     this.routeToMicroservice('EVENT', this.eventClient, 'events/rewards', req, res);
+  }
+
+  @ApiTags('Event')
+  @ApiOperation({
+    summary: '이벤트 목록 조회',
+    description: '모든 활성화된 이벤트 목록을 조회합니다.',
+  })
+  @ApiExtraModels(BaseResponseDto)
+  @ApiCreatedResponse({
+    description: '이벤트 목록 조회 성공',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        { properties: { data: { type: 'array', items: { type: 'object' } } } },
+      ],
+    },
+  })
+  @Get('events')
+  handleGetEvents(@Req() req: Request, @Res() res: Response): void {
+    this.routeToMicroservice('EVENT', this.eventClient, 'events', req, res);
+  }
+
+  @ApiTags('Event')
+  @ApiOperation({
+    summary: '이벤트 상세 조회',
+    description: '특정 이벤트의 상세 정보를 조회합니다.',
+  })
+  @ApiExtraModels(BaseResponseDto)
+  @ApiCreatedResponse({
+    description: '이벤트 상세 조회 성공',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        { properties: { data: { type: 'object' } } },
+      ],
+    },
+  })
+  @Get('events/:eventId')
+  handleGetEventById(
+    @Param('eventId') eventId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): void {
+    this.routeToMicroservice('EVENT', this.eventClient, `events/${eventId}`, req, res);
+  }
+
+  @ApiTags('Event')
+  @ApiOperation({
+    summary: '이벤트 보상 목록 조회',
+    description: '특정 이벤트의 보상 목록을 조회합니다.',
+  })
+  @ApiExtraModels(BaseResponseDto)
+  @ApiCreatedResponse({
+    description: '이벤트 보상 목록 조회 성공',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        { properties: { data: { type: 'array', items: { type: 'object' } } } },
+      ],
+    },
+  })
+  @Get('events/:eventId/rewards')
+  handleGetEventRewards(
+    @Param('eventId') eventId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): void {
+    this.routeToMicroservice('EVENT', this.eventClient, `events/${eventId}/rewards`, req, res);
   }
 
   @ApiExcludeEndpoint()

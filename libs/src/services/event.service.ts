@@ -20,7 +20,7 @@ export class EventService {
     this.logger.log(`Creating event: ${createEventDto.title}`);
 
     if (new Date(createEventDto.startDate) > new Date(createEventDto.endDate)) {
-      throw new BadRequestException('Start date must be before end date');
+      throw new RpcException(new BadRequestException('Start date must be before end date'));
     }
 
     const event = await this.eventRepository.create({
@@ -39,14 +39,16 @@ export class EventService {
 
     const event = await this.eventRepository.findById(eventId);
     if (!event) {
-      throw new BadRequestException('Event not found');
+      throw new RpcException(new BadRequestException('Event not found'));
     }
 
     if (event.status === EventStatus.ENDED || event.status === EventStatus.CANCELLED) {
-      throw new BadRequestException('Cannot add rewards to ended or cancelled events');
+      throw new RpcException(
+        new BadRequestException('Cannot add rewards to ended or cancelled events'),
+      );
     }
 
-    event.rewards.push(rewardDto);
+    event.rewards.push(rewardDto.toSchema());
     const updatedEvent = await this.eventRepository.update(eventId, { rewards: event.rewards });
     if (!updatedEvent) {
       throw new RpcException(new BadRequestException('Failed to update event with new reward'));
@@ -54,5 +56,20 @@ export class EventService {
 
     this.logger.log(`Added reward to event ${eventId}`);
     return updatedEvent;
+  }
+
+  async findAllEvents(): Promise<Event[]> {
+    this.logger.log('Finding all active events');
+    return this.eventRepository.findAll();
+  }
+
+  async findEventById(eventId: string): Promise<Event | null> {
+    this.logger.log(`Finding event by ID: ${eventId}`);
+    return this.eventRepository.findById(eventId);
+  }
+
+  async findEventsByStatus(status: EventStatus): Promise<Event[]> {
+    this.logger.log(`Finding events by status: ${status}`);
+    return this.eventRepository.findByStatus(status);
   }
 }

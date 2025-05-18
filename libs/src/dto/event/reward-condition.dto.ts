@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, Min } from 'class-validator';
-import { RewardConditionType } from '@app/common/schemas/event.schema';
+import { RewardCondition, RewardConditionType } from '@app/common/schemas';
 
 export class RewardConditionDto {
   @ApiProperty({
@@ -36,4 +36,13 @@ export class RewardConditionDto {
   @IsOptional()
   @IsObject()
   additionalParams?: Record<string, any>;
-} 
+
+  toSchema(): RewardCondition {
+    return {
+      type: this.type,
+      targetValue: this.targetValue,
+      description: this.description,
+      additionalParams: this.additionalParams || {},
+    };
+  }
+}
