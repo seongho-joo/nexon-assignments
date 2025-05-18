@@ -26,24 +26,29 @@ describe('UserService', () => {
     lastLoginAt: new Date(),
   } as unknown as User;
 
+  const ADMIN_KEY = 'test-admin-key';
+
   beforeEach(async () => {
-    const mockUserRepository = {
-      findByUsername: jest.fn(),
+  const mockUserRepository = {
+    findByUsername: jest.fn(),
       findById: jest.fn(),
-      create: jest.fn(),
+    create: jest.fn(),
       updateRole: jest.fn(),
-    };
+  };
 
-    const mockConfigService = {
-      get: jest.fn(),
-    };
+  const mockConfigService = {
+      get: jest.fn().mockImplementation((key: string) => {
+        if (key === 'ADMIN_KEY') return ADMIN_KEY;
+        return undefined;
+      }),
+  };
 
-    const mockLogger = {
-      setContext: jest.fn(),
-      log: jest.fn(),
+  const mockLogger = {
+    setContext: jest.fn(),
+    log: jest.fn(),
       error: jest.fn(),
       warn: jest.fn(),
-    };
+  };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -66,8 +71,6 @@ describe('UserService', () => {
     service = module.get<UserService>(UserService);
     userRepository = module.get(UserRepository);
     configService = module.get(ConfigService);
-
-    configService.get.mockReturnValue('test-admin-key');
   });
 
   describe('findByUsername', () => {
@@ -132,10 +135,8 @@ describe('UserService', () => {
     });
 
     it('should throw error when creating admin with invalid admin key', async () => {
-      configService.get.mockReturnValue('different-admin-key');
-
       await expect(
-        service.register('admin', 'password123', UserRole.ADMIN, 'test-admin-key'),
+        service.register('admin', 'password123', UserRole.ADMIN, 'wrong-admin-key'),
       ).rejects.toThrow(RpcException);
     });
 
@@ -147,16 +148,16 @@ describe('UserService', () => {
         'admin',
         'password123',
         UserRole.ADMIN,
-        'test-admin-key',
+        ADMIN_KEY,
       );
 
       expect(result).toBe('new-admin-id');
-      expect(userRepository.create).toHaveBeenCalledWith({
+        expect(userRepository.create).toHaveBeenCalledWith({
         username: 'admin',
         password: 'hashedpassword',
-        role: UserRole.ADMIN,
-        balance: 0,
-        isActive: true,
+          role: UserRole.ADMIN,
+          balance: 0,
+          isActive: true,
       });
     });
   });

@@ -8,6 +8,10 @@ import { UserService } from './user.service';
 import { RedisService } from '@app/common/redis';
 import { User, UserRole } from '@app/common/schemas';
 import { RedisEnum } from '@app/common/redis/redis.enum';
+import {
+  GetRolePermissionsDto,
+  SetRolePermissionDto,
+} from '@app/common/dto/role/role-permission.dto';
 
 jest.mock('bcrypt');
 
@@ -40,6 +44,8 @@ describe('AuthService', () => {
     const mockUserService = {
       findByUsername: jest.fn(),
       findById: jest.fn(),
+      findByEmail: jest.fn(),
+      create: jest.fn(),
     };
 
     const mockJwtService = {
@@ -51,6 +57,9 @@ describe('AuthService', () => {
       set: jest.fn(),
       get: jest.fn(),
       delete: jest.fn(),
+      sAdd: jest.fn(),
+      sRem: jest.fn(),
+      sMembers: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -211,6 +220,102 @@ describe('AuthService', () => {
 
       const { key } = RedisEnum.AUTH_TOKEN.getKeyAndTTL(mockUser.id);
       expect(redisService.delete).toHaveBeenCalledWith(key);
+    });
+  });
+
+  describe('Role Permission Management', () => {
+    describe('setRolePermission', () => {
+      const dto: SetRolePermissionDto = {
+        role: UserRole.OPERATOR,
+        method: 'GET',
+        path: '/api/events',
+        allow: true,
+      };
+
+      it('should add permission when allow is true', async () => {
+        await service.setRolePermission(dto);
+
+        expect(redisService.sAdd).toHaveBeenCalledWith(
+          expect.stringContaining('OPERATOR:GET'),
+          '/api/events',
+        );
+      });
+
+      it('should remove permission when allow is false', async () => {
+        await service.setRolePermission({ ...dto, allow: false });
+
+        expect(redisService.sRem).toHaveBeenCalledWith(
+          expect.stringContaining('OPERATOR:GET'),
+          '/api/events',
+        );
+      });
+
+      it('should throw error when trying to modify admin permissions', async () => {
+        const adminDto = { ...dto, role: UserRole.ADMIN };
+
+        await expect(service.setRolePermission(adminDto)).rejects.toThrow(RpcException);
+      });
+    });
+
+    describe('getRolePermissions', () => {
+      const dto: GetRolePermissionsDto = {
+        role: UserRole.OPERATOR,
+        method: 'GET',
+      };
+
+      it('should return permissions for specific method', async () => {
+        const mockPaths = ['/api/events', '/api/rewards'];
+        redisService.sMembers.mockResolvedValue(mockPaths);
+
+        const result = await service.getRolePermissions(dto);
+
+        expect(result).toEqual({
+          GET: mockPaths,
+        });
+        expect(redisService.sMembers).toHaveBeenCalledWith(expect.stringContaining('OPERATOR:GET'));
+      });
+
+      it('should return permissions for all methods when method is not specified', async () => {
+        const mockPaths = ['/api/events'];
+        redisService.sMembers.mockResolvedValue(mockPaths);
+
+        const result = await service.getRolePermissions({
+          role: UserRole.OPERATOR,
+        });
+
+        expect(result).toEqual({
+          GET: mockPaths,
+          POST: mockPaths,
+          PUT: mockPaths,
+          DELETE: mockPaths,
+          PATCH: mockPaths,
+        });
+        expect(redisService.sMembers).toHaveBeenCalledTimes(5);
+      });
+    });
+
+    describe('removeRolePermission', () => {
+      const dto: SetRolePermissionDto = {
+        role: UserRole.OPERATOR,
+        method: 'GET',
+        path: '/api/events',
+        allow: false,
+      };
+
+      it('should remove permission', async () => {
+        await service.removeRolePermission(dto);
+
+        expect(redisService.sRem).toHaveBeenCalledWith(
+          expect.stringContaining('OPERATOR:GET'),
+          '/api/events',
+        );
+      });
+
+      it('should throw error when trying to modify admin permissions', async () => {
+        const adminDto = { ...dto, role: UserRole.ADMIN };
+
+        await expect(service.removeRolePermission(adminDto)).rejects.toThrow(RpcException);
+      });
     });
   });
 });
