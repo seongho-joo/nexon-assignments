@@ -1,15 +1,17 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Event, EventSchema } from '@app/common/schemas';
-import { EventGateway } from './event.gateway';
+import { Event, EventSchema, RequestSchema } from '@app/common/schemas';
+import { EventGateway, RequestGateway } from '@app/event/gateway';
 import { EventService } from '@app/common/services/event.service';
 import { EventRepository } from '@app/common/repositories/event.repository';
 import { LoggerModule } from '@app/common/logger';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from '@app/common/strategies/jwt.strategy';
-import { EventController } from '@app/event/event.controller';
+import { EventController } from '@app/event/controller/event.controller';
+import { RequestService } from '@app/common/services/request.service';
+import { RequestRepository } from '@app/common/repositories/request.repository';
 
 @Module({
   imports: [
@@ -39,10 +41,16 @@ import { EventController } from '@app/event/event.controller';
         return { uri };
       },
     }),
-    MongooseModule.forFeature([{ name: Event.name, schema: EventSchema }]),
+    MongooseModule.forFeature([
+      { name: Event.name, schema: EventSchema },
+      {
+        name: Request.name,
+        schema: RequestSchema,
+      },
+    ]),
     LoggerModule,
   ],
-  controllers: [EventController, EventGateway],
-  providers: [EventService, EventRepository, JwtStrategy],
+  controllers: [EventController, EventGateway, RequestGateway],
+  providers: [EventService, EventRepository, JwtStrategy, RequestService, RequestRepository],
 })
 export class EventModule {}

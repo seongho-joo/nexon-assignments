@@ -78,3 +78,5 @@ export class Request extends Document {
 }
 
 export const RequestSchema = SchemaFactory.createForClass(Request);
+
+RequestSchema.index({ userId: 1, requestId: 1, eventId: 1 }, { unique: true });

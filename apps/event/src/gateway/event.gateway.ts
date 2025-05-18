@@ -69,7 +69,7 @@ export class EventGateway {
         };
       }
       case 'GET': {
-        console.log('Fetching all events');
+        this.logger.log('Fetching all events');
         const events = await this.eventService.findAllEvents();
         return {
           statusCode: HttpStatus.OK,
