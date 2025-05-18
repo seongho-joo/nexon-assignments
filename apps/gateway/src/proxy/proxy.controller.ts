@@ -12,6 +12,7 @@ import {
   Query,
   Delete,
   Put,
+  Param,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { Request, Response } from 'express';
@@ -44,6 +45,8 @@ import {
   SetRolePermissionDto,
 } from '@app/common/dto/role/role-permission.dto';
 import { UpdateUserRoleDto } from '@app/common/dto/role';
+import { CreateEventDto } from '@app/common/dto/event/create-event.dto';
+import { RewardDto } from '@app/common/dto/event/reward.dto';
 
 interface ProxyPayload {
   path: string;
@@ -232,14 +235,86 @@ export class ProxyController {
   }
 
   @ApiTags('Event')
-  @Get('event')
-  @ApiOperation({ summary: '이벤트 서비스 루트 경로' })
-  handleEventRequests(
-    @Body() dto: UpdateUserRoleDto,
+  @ApiOperation({
+    summary: '이벤트 생성',
+    description: '새로운 이벤트를 생성합니다.',
+  })
+  @ApiBody({ type: CreateEventDto })
+  @ApiExtraModels(BaseResponseDto)
+  @ApiCreatedResponse({
+    description: '이벤트가 성공적으로 생성됨',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        {
+          properties: {
+            data: {
+              type: 'object',
+              properties: {
+                eventId: { type: 'string' },
+                title: { type: 'string' },
+                description: { type: 'string' },
+                startDate: { type: 'string', format: 'date-time' },
+                endDate: { type: 'string', format: 'date-time' },
+                status: { type: 'string' },
+                rewards: { type: 'array', items: { $ref: getSchemaPath(RewardDto) } },
+              },
+            },
+          },
+        },
+      ],
+    },
+  })
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Post('events')
+  handleCreateEvent(
+    @Body() dto: CreateEventDto,
+    @Req() req: Request,
+    @Res() res: Response,
+    @User() user: UserInfo,
+  ): void {
+    void dto;
+    req.headers['user-id'] = user.id;
+    this.routeToMicroservice('EVENT', this.eventClient, 'events', req, res);
+  }
+
+  @ApiTags('Event')
+  @ApiOperation({
+    summary: '이벤트 보상 추가',
+    description: '특정 이벤트에 보상을 추가합니다.',
+  })
+  @ApiBody({ type: RewardDto })
+  @ApiExtraModels(BaseResponseDto)
+  @ApiCreatedResponse({
+    description: '이벤트 보상이 성공적으로 추가됨',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        {
+          properties: {
+            data: {
+              type: 'object',
+              properties: {
+                eventId: { type: 'string' },
+                rewards: { type: 'array', items: { $ref: getSchemaPath(RewardDto) } },
+              },
+            },
+          },
+        },
+      ],
+    },
+  })
+  @Roles(UserRole.ADMIN, UserRole.OPERATOR)
+  @Post('events/:eventId/rewards')
+  handleAddEventReward(
+    @Param('eventId') eventId: string,
+    @Body() dto: RewardDto,
     @Req() req: Request,
     @Res() res: Response,
   ): void {
-    this.routeToMicroservice('EVENT', this.eventClient, '', req, res);
+    void dto;
+    req.params['eventId'] = eventId;
+    this.routeToMicroservice('EVENT', this.eventClient, 'events/rewards', req, res);
   }
 
   @ApiExcludeEndpoint()
@@ -312,10 +387,9 @@ export class ProxyController {
         }),
       )
       .subscribe({
-        next: (data: { statusCode?: number } & Record<string, unknown>) => {
+        next: data => {
           this.logger.log(`Response from ${serviceName} service for ${req.url}`);
-          const status = data.statusCode || HttpStatus.OK;
-          res.status(status).json(data);
+          res.status(HttpStatus.OK).json(data);
         },
         error: (err: { message?: string; status?: number; stack?: string }) => {
           this.logger.error(
@@ -324,8 +398,8 @@ export class ProxyController {
           const status: number =
             typeof err.status === 'number' ? err.status : HttpStatus.INTERNAL_SERVER_ERROR;
           res.status(status).json({
+            error: err.message || 'An error occurred',
             statusCode: status,
-            message: err.message || 'An error occurred',
             timestamp: new Date().toISOString(),
           });
         },
