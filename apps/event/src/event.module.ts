@@ -12,6 +12,8 @@ import { JwtStrategy } from '@app/common/strategies/jwt.strategy';
 import { EventController } from '@app/event/controller/event.controller';
 import { RequestService } from '@app/common/services/request.service';
 import { RequestRepository } from '@app/common/repositories/request.repository';
+import { RewardConditionValidatorService } from '@app/common/services/reward-condition-validator.service';
+import { RedisModule } from '@app/common/redis';
 
 @Module({
   imports: [
@@ -49,8 +51,16 @@ import { RequestRepository } from '@app/common/repositories/request.repository';
       },
     ]),
     LoggerModule,
+    RedisModule,
   ],
   controllers: [EventController, EventGateway, RequestGateway],
-  providers: [EventService, EventRepository, JwtStrategy, RequestService, RequestRepository],
+  providers: [
+    EventService,
+    EventRepository,
+    JwtStrategy,
+    RequestService,
+    RequestRepository,
+    RewardConditionValidatorService,
+  ],
 })
 export class EventModule {}

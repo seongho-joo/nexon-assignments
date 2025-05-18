@@ -34,7 +34,6 @@ export class AuthService {
     if (!user || !user.isActive) {
       throw new RpcException(new UnauthorizedException('Invalid credentials'));
     }
-
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new RpcException(new UnauthorizedException('Invalid credentials'));
@@ -56,6 +55,7 @@ export class AuthService {
     const accessToken = this.jwtService.sign(payload);
 
     await this.storeToken(user.id, accessToken);
+    await this.recordUserLogin(user.id);
 
     const userInfo: UserInfo = {
       id: user.id,
@@ -166,5 +166,15 @@ export class AuthService {
 
     const key = this.getRoleKey(role, method);
     await this.redisService.sRem(key, path);
+  }
+
+  private async recordUserLogin(userId: string): Promise<void> {
+    const { key: loginAtKey } = RedisEnum.CONTINUOUS_LOGIN_AT.getKeyAndTTL(userId);
+
+    const loginAt = await this.redisService.get(loginAtKey);
+    if (!loginAt) {
+      const { key: loginCountKey } = RedisEnum.CONTINUOUS_LOGIN_COUNT.getKeyAndTTL(userId);
+      await this.redisService.increment(loginCountKey);
+    }
   }
 }

@@ -5,10 +5,7 @@ import { ulid } from 'ulid';
 export enum RewardConditionType {
   LOGIN = 'LOGIN', // 로그인
   PLAY_TIME = 'PLAY_TIME', // 플레이 시간
-  ACHIEVEMENT = 'ACHIEVEMENT', // 업적 달성
   LEVEL = 'LEVEL', // 레벨 달성
-  ITEM_COLLECT = 'ITEM_COLLECT', // 아이템 수집
-  CUSTOM = 'CUSTOM', // 커스텀 조건
 }
 
 export class RewardCondition {

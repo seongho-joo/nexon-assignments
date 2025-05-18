@@ -36,6 +36,18 @@ export class RedisEnum {
     RedisTTLEnum.FOREVER,
   );
 
+  static readonly CONTINUOUS_LOGIN_AT = new RedisEnum(
+    RedisDataStructureEnum.STRING,
+    'condition:continuous:login:at',
+    RedisTTLEnum.DAY,
+  );
+
+  static readonly CONTINUOUS_LOGIN_COUNT = new RedisEnum(
+    RedisDataStructureEnum.STRING,
+    'condition:continuous:login:count',
+    RedisTTLEnum.DAY,
+  );
+
   private constructor(
     public readonly dataType: string,
     public readonly key: string,

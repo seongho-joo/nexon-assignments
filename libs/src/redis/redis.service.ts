@@ -48,6 +48,20 @@ export class RedisService {
     }
   }
 
+  async increment(key: string): Promise<number> {
+    try {
+      return await new Promise<number>((resolve, reject) => {
+        this.client.incrby(key, (err, reply) => {
+          if (err) reject(err);
+          else resolve(reply);
+        });
+      });
+    } catch (error) {
+      this.logger.error(`Error incrementing Redis key (key: ${key})`, error);
+      throw error;
+    }
+  }
+
   async setTTL(key: string, ttl: number): Promise<void> {
     try {
       await new Promise<void>((resolve, reject) => {
