@@ -41,7 +41,7 @@ export class UserRepository {
   }
 
   async findById(userId: string): Promise<User | null> {
-    return this.userModel.findOne({ userId }).exec();
+    return this.userModel.findById(userId).exec();
   }
 
   async updateRole(userId: string, role: UserRole): Promise<User> {
