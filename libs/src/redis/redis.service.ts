@@ -1,27 +1,28 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
-import type { RedisClientType } from 'redis';
+import { RedisClient } from 'redis';
 import { CustomLoggerService } from '@app/common/logger';
-
-interface RedisCache extends Cache {
-  store: {
-    getClient(): RedisClientType;
-  };
-}
 
 @Injectable()
 export class RedisService {
+  private readonly client: RedisClient;
+
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly logger: CustomLoggerService,
   ) {
     this.logger.setContext('RedisService');
+    this.client = (this.cacheManager.store as any).getClient();
   }
 
   async set(key: string, value: any, ttl?: number): Promise<void> {
     try {
-      await this.cacheManager.set(key, value, ttl);
+      if (ttl) {
+        await this.cacheManager.set(key, value, { ttl });
+      } else {
+        await this.cacheManager.set(key, value);
+      }
     } catch (error) {
       this.logger.error(`Error saving data to Redis (key: ${key})`, error);
       throw error;
@@ -30,7 +31,8 @@ export class RedisService {
 
   async get<T>(key: string): Promise<T | null> {
     try {
-      return this.cacheManager.get<T>(key);
+      const value = await this.cacheManager.get<T>(key);
+      return value ?? null;
     } catch (error) {
       this.logger.error(`Error retrieving data from Redis (key: ${key})`, error);
       throw error;
@@ -48,8 +50,12 @@ export class RedisService {
 
   async setTTL(key: string, ttl: number): Promise<void> {
     try {
-      const client = this.getClient();
-      await client.expire(key, ttl);
+      await new Promise<void>((resolve, reject) => {
+        this.client.expire(key, ttl, err => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
     } catch (error) {
       this.logger.error(`Error setting TTL on Redis key (key: ${key})`, error);
       throw error;
@@ -58,8 +64,12 @@ export class RedisService {
 
   async sAdd(key: string, ...members: string[]): Promise<number> {
     try {
-      const client = this.getClient();
-      return client.sAdd(key, members);
+      return await new Promise<number>((resolve, reject) => {
+        this.client.sadd(key, members, (err, reply) => {
+          if (err) reject(err);
+          else resolve(reply);
+        });
+      });
     } catch (error) {
       this.logger.error(`Error adding members to Redis Set (key: ${key})`, error);
       throw error;
@@ -68,8 +78,12 @@ export class RedisService {
 
   async sMembers(key: string): Promise<string[]> {
     try {
-      const client = this.getClient();
-      return client.sMembers(key);
+      return await new Promise<string[]>((resolve, reject) => {
+        this.client.smembers(key, (err, reply) => {
+          if (err) reject(err);
+          else resolve(reply);
+        });
+      });
     } catch (error) {
       this.logger.error(`Error fetching members from Redis Set (key: ${key})`, error);
       throw error;
@@ -78,8 +92,12 @@ export class RedisService {
 
   async sIsMember(key: string, member: string): Promise<boolean> {
     try {
-      const client = this.getClient();
-      return client.sIsMember(key, member);
+      return await new Promise<boolean>((resolve, reject) => {
+        this.client.sismember(key, member, (err, reply) => {
+          if (err) reject(err);
+          else resolve(reply === 1);
+        });
+      });
     } catch (error) {
       this.logger.error(
         `Error checking member in Redis Set (key: ${key}, member: ${member})`,
@@ -91,8 +109,12 @@ export class RedisService {
 
   async sRem(key: string, ...members: string[]): Promise<number> {
     try {
-      const client = this.getClient();
-      return client.sRem(key, members);
+      return await new Promise<number>((resolve, reject) => {
+        this.client.srem(key, members, (err, reply) => {
+          if (err) reject(err);
+          else resolve(reply);
+        });
+      });
     } catch (error) {
       this.logger.error(`Error removing members from Redis Set (key: ${key})`, error);
       throw error;
@@ -101,15 +123,15 @@ export class RedisService {
 
   async sCard(key: string): Promise<number> {
     try {
-      const client = this.getClient();
-      return client.sCard(key);
+      return await new Promise<number>((resolve, reject) => {
+        this.client.scard(key, (err, reply) => {
+          if (err) reject(err);
+          else resolve(reply);
+        });
+      });
     } catch (error) {
       this.logger.error(`Error getting cardinality of Redis Set (key: ${key})`, error);
       throw error;
     }
-  }
-
-  private getClient(): RedisClientType {
-    return (this.cacheManager as RedisCache).store.getClient();
   }
 }
