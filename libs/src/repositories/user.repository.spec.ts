@@ -102,7 +102,10 @@ describe('UserRepository', () => {
 
       await repository.updateBalance(userId, newBalance);
 
-      expect(mockUserModel.updateOne).toHaveBeenCalledWith({ userId }, { balance: newBalance });
+      expect(mockUserModel.updateOne).toHaveBeenCalledWith(
+        { _id: userId },
+        { balance: newBalance },
+      );
     });
   });
 
@@ -114,7 +117,7 @@ describe('UserRepository', () => {
 
       await repository.updateActiveStatus(userId, isActive);
 
-      expect(mockUserModel.updateOne).toHaveBeenCalledWith({ userId }, { isActive });
+      expect(mockUserModel.updateOne).toHaveBeenCalledWith({ _id: userId }, { isActive });
     });
   });
 

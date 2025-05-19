@@ -1,50 +1,57 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RequestService } from './request.service';
-import { RequestRepository } from '../repositories/request.repository';
+import { RequestRepository } from '@app/common/repositories/request.repository';
 import { EventService } from './event.service';
-import { CustomLoggerService } from '@app/common/logger';
-import { Request, Event, RequestStatus } from '@app/common/schemas';
-import { Document } from 'mongoose';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
 import { RewardConditionValidatorService } from '@app/common/services/reward-condition-validator.service';
-
-interface CreateRequestDto {
-  eventId: string;
-}
+import { PointTransactionRepository } from '@app/common/repositories/point-transaction.repository';
+import { UserRepository } from '@app/common/repositories/user.repository';
+import { CustomLoggerService } from '@app/common/logger';
+import { RpcException } from '@nestjs/microservices';
+import {
+  Event,
+  PointTransactionType,
+  RequestStatus,
+  Reward,
+  User,
+  RewardConditionType,
+} from '@app/common/schemas';
+import { Types } from 'mongoose';
+import { CreateRequestDto } from '@app/common/dto/request';
 
 describe('RequestService', () => {
   let service: RequestService;
-  let repository: jest.Mocked<RequestRepository>;
+  let requestRepository: jest.Mocked<RequestRepository>;
   let eventService: jest.Mocked<EventService>;
-  let rewardValidator: jest.Mocked<RewardConditionValidatorService>;
-  let logger: CustomLoggerService;
+  let rewardConditionValidator: jest.Mocked<RewardConditionValidatorService>;
+  let pointTransactionRepository: jest.Mocked<PointTransactionRepository>;
+  let userRepository: jest.Mocked<UserRepository>;
+  let logger: jest.Mocked<CustomLoggerService>;
 
-  const mockRequest = {
-    requestId: 'test-request-id',
-    eventId: 'test-event-id',
-    userId: 'test-user-id',
-    status: RequestStatus.PENDING,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  } as unknown as Request & Document;
+  const mockUser: Partial<User> = {
+    _id: new Types.ObjectId('6460f5b082c8a2a97a4a89b1'),
+    userId: 'user123',
+    username: 'testuser',
+    balance: 1000,
+  };
 
-  const mockEvent = {
-    eventId: 'test-event-id',
-    title: 'Test Event',
-    description: 'Test Description',
-    startDate: new Date(),
-    endDate: new Date(),
-    isActive: true,
-    rewards: [{
-      condition: {
-        type: 'PLAY_TIME',
-        targetValue: 3600,
-        description: '1시간 이상 플레이',
-        additionalParams: {}
-      }
-    }]
-  } as unknown as Event;
+  const mockEvent: Partial<Event> = {
+    _id: new Types.ObjectId('6460f5b082c8a2a97a4a89b2'),
+    eventId: 'event123',
+    title: '테스트 이벤트',
+    rewards: [
+      {
+        name: '플레이타임 보상',
+        rewardPoint: 500,
+        description: '1시간 플레이 보상',
+        condition: {
+          type: RewardConditionType.PLAY_TIME,
+          targetValue: 60,
+          description: '1시간 이상 플레이',
+          additionalParams: {},
+        },
+      },
+    ],
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -56,7 +63,6 @@ describe('RequestService', () => {
             create: jest.fn(),
             findById: jest.fn(),
             findByUserIdAndEventId: jest.fn(),
-            updateStatus: jest.fn(),
           },
         },
         {
@@ -72,6 +78,19 @@ describe('RequestService', () => {
           },
         },
         {
+          provide: PointTransactionRepository,
+          useValue: {
+            create: jest.fn(),
+          },
+        },
+        {
+          provide: UserRepository,
+          useValue: {
+            findById: jest.fn(),
+            updateBalance: jest.fn(),
+          },
+        },
+        {
           provide: CustomLoggerService,
           useValue: {
             setContext: jest.fn(),
@@ -83,154 +102,168 @@ describe('RequestService', () => {
     }).compile();
 
     service = module.get<RequestService>(RequestService);
-    repository = module.get(RequestRepository);
+    requestRepository = module.get(RequestRepository);
     eventService = module.get(EventService);
-    rewardValidator = module.get(RewardConditionValidatorService);
-    logger = module.get<CustomLoggerService>(CustomLoggerService);
+    rewardConditionValidator = module.get(RewardConditionValidatorService);
+    pointTransactionRepository = module.get(PointTransactionRepository);
+    userRepository = module.get(UserRepository);
+    logger = module.get(CustomLoggerService);
   });
 
   describe('createRequest', () => {
-    it('should create a new request', async () => {
-      const createRequestDto: CreateRequestDto = {
-        eventId: 'test-event-id',
-      };
-      const userId = 'test-user-id';
+    const createRequestDto: CreateRequestDto = {
+      eventId: 'event123',
+    };
 
-      eventService.findEventById.mockResolvedValue(mockEvent);
-      repository.findByUserIdAndEventId.mockResolvedValue(null);
-      rewardValidator.validateCondition.mockResolvedValue({ isValid: true });
-      repository.create.mockResolvedValue(mockRequest);
+    beforeEach(() => {
+      eventService.findEventById.mockResolvedValue(mockEvent as Event);
+      rewardConditionValidator.validateCondition.mockResolvedValue({ isValid: true });
+      userRepository.findById.mockResolvedValue(mockUser as User);
+      requestRepository.create.mockResolvedValue({
+        requestId: 'request123',
+        userId: 'user123',
+        eventId: 'event123',
+        status: RequestStatus.APPROVED,
+      } as any);
+    });
 
-      const result = await service.createRequest(createRequestDto, userId);
+    it('should create a request and grant reward successfully', async () => {
+      const result = await service.createRequest(createRequestDto, 'user123');
 
-      expect(eventService.findEventById).toHaveBeenCalledWith(createRequestDto.eventId);
-      expect(repository.create).toHaveBeenCalledWith({
-        eventId: createRequestDto.eventId,
-        userId: userId,
+      expect(eventService.findEventById).toHaveBeenCalledWith('event123');
+      expect(rewardConditionValidator.validateCondition).toHaveBeenCalledWith(
+        mockEvent.rewards![0].condition,
+        'user123',
+      );
+      expect(requestRepository.create).toHaveBeenCalledWith({
+        userId: 'user123',
+        eventId: 'event123',
         status: RequestStatus.APPROVED,
         approvedAt: expect.any(Date),
       });
-      expect(result).toBe(mockRequest);
+      expect(result.requestId).toBe('request123');
     });
 
     it('should throw error if event not found', async () => {
-      const createRequestDto: CreateRequestDto = {
-        eventId: 'invalid-id',
-      };
-      const userId = 'user-id';
       eventService.findEventById.mockResolvedValue(null);
 
-      await expect(service.createRequest(createRequestDto, userId)).rejects.toThrow(
+      await expect(service.createRequest(createRequestDto, 'user123')).rejects.toThrow(
         RpcException,
       );
     });
 
-    it('should throw error if event is not active', async () => {
-      const createRequestDto: CreateRequestDto = {
-        eventId: 'test-id',
-      };
-      const userId = 'user-id';
-      eventService.findEventById.mockResolvedValue({
-        ...mockEvent,
-        eventId: 'test-id',
-        isActive: false,
-      } as Event);
-      rewardValidator.validateCondition.mockResolvedValue({ isValid: false, reason: '이벤트 비활성화' });
+    it('should throw error if event has no rewards', async () => {
+      eventService.findEventById.mockResolvedValue({ ...mockEvent, rewards: [] } as Event);
 
-      await expect(service.createRequest(createRequestDto, userId)).rejects.toThrow(
+      await expect(service.createRequest(createRequestDto, 'user123')).rejects.toThrow(
         RpcException,
+      );
+    });
+
+    it('should throw error if reward already requested', async () => {
+      requestRepository.findByUserIdAndEventId.mockResolvedValue({} as any);
+
+      await expect(service.createRequest(createRequestDto, 'user123')).rejects.toThrow(
+        RpcException,
+      );
+    });
+
+    it('should throw error if reward condition not met', async () => {
+      rewardConditionValidator.validateCondition.mockResolvedValue({
+        isValid: false,
+        reason: '플레이 시간 부족',
+      });
+
+      await expect(service.createRequest(createRequestDto, 'user123')).rejects.toThrow(
+        RpcException,
+      );
+    });
+  });
+
+  describe('grantReward', () => {
+    const mockReward: Reward = {
+      name: '플레이타임 보상',
+      rewardPoint: 500,
+      description: '1시간 플레이 보상',
+      condition: {
+        type: RewardConditionType.PLAY_TIME,
+        targetValue: 60,
+        description: '1시간 이상 플레이',
+        additionalParams: {},
+      },
+    };
+
+    beforeEach(() => {
+      userRepository.findById.mockResolvedValue(mockUser as User);
+      pointTransactionRepository.create.mockResolvedValue({} as any);
+    });
+
+    it('should grant reward points successfully', async () => {
+      await service.grantReward(mockReward, mockUser.userId!, mockEvent as Event);
+
+      expect(userRepository.findById).toHaveBeenCalledWith(mockUser.userId);
+      expect(userRepository.updateBalance).toHaveBeenCalledWith(
+        mockUser.userId,
+        mockUser.balance! + mockReward.rewardPoint,
+      );
+      expect(pointTransactionRepository.create).toHaveBeenCalledWith({
+        userId: mockUser._id,
+        amount: mockReward.rewardPoint,
+        type: PointTransactionType.EVENT_REWARD,
+        eventId: mockEvent._id,
+        balanceAfter: mockUser.balance! + mockReward.rewardPoint,
+        description: `[이벤트:${mockEvent.title}] 보상 지급`,
+      });
+    });
+
+    it('should throw error if user not found', async () => {
+      userRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.grantReward(mockReward, mockUser.userId!, mockEvent as Event),
+      ).rejects.toThrow(RpcException);
+    });
+
+    it('should throw error if point transaction fails', async () => {
+      pointTransactionRepository.create.mockRejectedValue(new Error('DB Error'));
+
+      await expect(
+        service.grantReward(mockReward, mockUser.userId!, mockEvent as Event),
+      ).rejects.toThrow(RpcException);
+      expect(logger.error).toHaveBeenCalled();
+    });
+
+    it('should handle user with no initial balance', async () => {
+      const userWithNoBalance = { ...mockUser, balance: 0 };
+      userRepository.findById.mockResolvedValue(userWithNoBalance as User);
+
+      await service.grantReward(mockReward, mockUser.userId!, mockEvent as Event);
+
+      expect(userRepository.updateBalance).toHaveBeenCalledWith(
+        mockUser.userId,
+        mockReward.rewardPoint,
       );
     });
   });
 
   describe('findRequestById', () => {
-    it('should find request by id', async () => {
-      repository.findById.mockResolvedValue(mockRequest);
+    it('should return request if found', async () => {
+      const mockRequest = { requestId: 'request123' };
+      requestRepository.findById.mockResolvedValue(mockRequest as any);
 
-      const result = await service.findRequestById(mockRequest.requestId);
+      const result = await service.findRequestById('request123');
 
-      expect(repository.findById).toHaveBeenCalledWith(mockRequest.requestId);
-      expect(result).toBe(mockRequest);
+      expect(requestRepository.findById).toHaveBeenCalledWith('request123');
+      expect(result).toEqual(mockRequest);
     });
 
-    it('should throw error if request not found', async () => {
-      repository.findById.mockResolvedValue(null);
+    it('should return null if request not found', async () => {
+      requestRepository.findById.mockResolvedValue(null);
 
-      const result = await service.findRequestById('invalid-id');
+      const result = await service.findRequestById('request123');
+
+      expect(requestRepository.findById).toHaveBeenCalledWith('request123');
       expect(result).toBeNull();
     });
   });
-
-  // describe('findByEventId', () => {
-  //   it('should find requests by event id', async () => {
-  //     repository.findByEventId.mockResolvedValue([mockRequest]);
-
-  //     const result = await service.findByEventId(mockRequest.eventId);
-
-  //     expect(repository.findByEventId).toHaveBeenCalledWith(mockRequest.eventId);
-  //     expect(result).toEqual([mockRequest]);
-  //   });
-  // });
-
-  // describe('findByUserId', () => {
-  //   it('should find requests by user id', async () => {
-  //     repository.findByUserId.mockResolvedValue([mockRequest]);
-
-  //     const result = await service.findByUserId(mockRequest.userId);
-
-  //     expect(repository.findByUserId).toHaveBeenCalledWith(mockRequest.userId);
-  //     expect(result).toEqual([mockRequest]);
-  //   });
-  // });
-
-  // describe('updateStatus', () => {
-  //   it('should update request status', async () => {
-  //     repository.findById.mockResolvedValue(mockRequest);
-  //     repository.updateStatus.mockResolvedValue({
-  //       ...mockRequest,
-  //       status: RequestStatus.APPROVED,
-  //     } as Request & Document);
-
-  //     const result = await service.updateStatus(
-  //       mockRequest.requestId,
-  //       RequestStatus.APPROVED,
-  //     );
-
-  //     expect(repository.findById).toHaveBeenCalledWith(mockRequest.requestId);
-  //     expect(repository.updateStatus).toHaveBeenCalledWith(
-  //       mockRequest.requestId,
-  //       RequestStatus.APPROVED,
-  //     );
-  //     expect(result.status).toBe(RequestStatus.APPROVED);
-  //   });
-
-  //   it('should throw error if request not found', async () => {
-  //     repository.findById.mockResolvedValue(null);
-
-  //     await expect(
-  //       service.updateStatus('invalid-id', RequestStatus.APPROVED),
-  //     ).rejects.toThrow(NotFoundException);
-  //   });
-  // });
-
-  // describe('delete', () => {
-  //   it('should delete request', async () => {
-  //     repository.findById.mockResolvedValue(mockRequest);
-  //     repository.delete.mockResolvedValue(mockRequest);
-
-  //     const result = await service.delete(mockRequest.requestId);
-
-  //     expect(repository.findById).toHaveBeenCalledWith(mockRequest.requestId);
-  //     expect(repository.delete).toHaveBeenCalledWith(mockRequest.requestId);
-  //     expect(result).toBe(mockRequest);
-  //   });
-
-  //   it('should throw error if request not found', async () => {
-  //     repository.findById.mockResolvedValue(null);
-
-  //     await expect(service.delete('invalid-id')).rejects.toThrow(
-  //       NotFoundException,
-  //     );
-  //   });
-  // });
-}); 
+});

@@ -33,11 +33,11 @@ export class UserRepository {
   }
 
   async updateBalance(userId: string, balance: number): Promise<void> {
-    await this.userModel.updateOne({ userId }, { balance }).exec();
+    await this.userModel.updateOne({ _id: userId }, { balance }).exec();
   }
 
   async updateActiveStatus(userId: string, isActive: boolean): Promise<void> {
-    await this.userModel.updateOne({ userId }, { isActive }).exec();
+    await this.userModel.updateOne({ _id: userId }, { isActive }).exec();
   }
 
   async findById(userId: string): Promise<User | null> {

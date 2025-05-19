@@ -3,10 +3,13 @@ import { CustomLoggerService } from '@app/common/logger';
 import { RequestRepository } from '@app/common/repositories/request.repository';
 import { EventService } from './event.service';
 import { CreateRequestDto } from '@app/common/dto/request';
-import { Request, RequestStatus } from '@app/common/schemas';
-import { BadRequestException } from '@app/common/exceptions';
+import { Event, PointTransactionType, Request, RequestStatus, Reward } from '@app/common/schemas';
+import { BadRequestException, InternalServerException } from '@app/common/exceptions';
 import { RpcException } from '@nestjs/microservices';
 import { RewardConditionValidatorService } from '@app/common/services/reward-condition-validator.service';
+import { Types } from 'mongoose';
+import { PointTransactionRepository } from '@app/common/repositories/point-transaction.repository';
+import { UserRepository } from '@app/common/repositories/user.repository';
 
 @Injectable()
 export class RequestService {
@@ -14,6 +17,8 @@ export class RequestService {
     private readonly requestRepository: RequestRepository,
     private readonly eventService: EventService,
     private readonly rewardConditionValidator: RewardConditionValidatorService,
+    private readonly pointTransactionRepository: PointTransactionRepository,
+    private readonly userRepository: UserRepository,
     private readonly logger: CustomLoggerService,
   ) {
     this.logger.setContext('RequestService');
@@ -51,9 +56,9 @@ export class RequestService {
           new BadRequestException(`보상 조건 불충족: ${validationResult.reason}`),
         );
       }
+      await this.grantReward(reward, userId, event);
     }
 
-    // 모든 조건이 충족되면 자동으로 승인 상태로 생성
     const request = await this.requestRepository.create({
       userId,
       eventId: createRequestDto.eventId,
@@ -61,14 +66,37 @@ export class RequestService {
       approvedAt: new Date(),
     });
 
-    // TODO: 보상 지급 로직 구현
-    // 예: 유저의 포인트 증가, 아이템 지급 등
-
     this.logger.log(`Created and approved request ${request.requestId}`);
     return request;
   }
 
   async findRequestById(requestId: string): Promise<Request | null> {
     return this.requestRepository.findById(requestId);
+  }
+
+  async grantReward(reward: Reward, userId: string, event: Event) {
+    const amount = reward.rewardPoint;
+
+    try {
+      const user = await this.userRepository.findById(userId);
+      if (!user) {
+        throw new RpcException(new InternalServerException('유저 정보 없음'));
+      }
+
+      const newBalance = (user!.balance || 0) + amount;
+      await this.userRepository.updateBalance(userId, newBalance);
+
+      await this.pointTransactionRepository.create({
+        userId: user._id as Types.ObjectId,
+        amount,
+        type: PointTransactionType.EVENT_REWARD,
+        eventId: event._id as Types.ObjectId,
+        balanceAfter: newBalance,
+        description: `[이벤트:${event.title}] 보상 지급`,
+      });
+    } catch (err) {
+      this.logger.error('포인트 지급 실패', err);
+      throw new RpcException(new InternalServerException('포인트 지급 실패'));
+    }
   }
 }
