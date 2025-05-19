@@ -7,6 +7,7 @@ import { CustomLoggerService } from '@app/common/logger';
 
 type MockModel = {
   findOne: jest.Mock;
+  findById: jest.Mock;
   create: jest.Mock;
   updateOne: jest.Mock;
   exec: jest.Mock;
@@ -17,6 +18,7 @@ describe('UserRepository', () => {
 
   const mockUserModel: MockModel = {
     findOne: jest.fn(),
+    findById: jest.fn(),
     create: jest.fn(),
     updateOne: jest.fn(),
     exec: jest.fn(),
@@ -49,6 +51,7 @@ describe('UserRepository', () => {
     jest.clearAllMocks();
     mockUserModel.findOne.mockReturnValue({ exec: mockUserModel.exec });
     mockUserModel.updateOne.mockReturnValue({ exec: mockUserModel.exec });
+    mockUserModel.findById.mockReturnValue({ exec: mockUserModel.exec });
   });
 
   describe('findByUsername', () => {
@@ -118,16 +121,16 @@ describe('UserRepository', () => {
   describe('findById', () => {
     it('should find user by ID', async () => {
       const mockUser = { userId: 'test-id', username: 'testuser' };
-      mockUserModel.findOne().exec.mockResolvedValue(mockUser);
+      mockUserModel.findById().exec.mockResolvedValue(mockUser);
 
       const result = await repository.findById('test-id');
 
       expect(result).toBe(mockUser);
-      expect(mockUserModel.findOne).toHaveBeenCalledWith({ userId: 'test-id' });
+      expect(mockUserModel.findById).toHaveBeenCalledWith('test-id');
     });
 
     it('should return null when user not found', async () => {
-      mockUserModel.findOne().exec.mockResolvedValue(null);
+      mockUserModel.findById().exec.mockResolvedValue(null);
 
       const result = await repository.findById('nonexistent');
 

@@ -12,6 +12,7 @@ import {
   GetRolePermissionsDto,
   SetRolePermissionDto,
 } from '@app/common/dto/role/role-permission.dto';
+import { PlayTimeTrackerService } from './play-time-tracker.service';
 
 jest.mock('bcrypt');
 
@@ -20,6 +21,7 @@ describe('AuthService', () => {
   let userService: jest.Mocked<UserService>;
   let jwtService: jest.Mocked<JwtService>;
   let redisService: jest.Mocked<RedisService>;
+  let playTimeTrackerService: jest.Mocked<PlayTimeTrackerService>;
 
   const mockUser = {
     id: 'test-id',
@@ -46,6 +48,7 @@ describe('AuthService', () => {
       findById: jest.fn(),
       findByEmail: jest.fn(),
       create: jest.fn(),
+      findOne: jest.fn(),
     };
 
     const mockJwtService = {
@@ -60,6 +63,13 @@ describe('AuthService', () => {
       sAdd: jest.fn(),
       sRem: jest.fn(),
       sMembers: jest.fn(),
+      increment: jest.fn(),
+    };
+
+    const mockPlayTimeTrackerService = {
+      startSession: jest.fn(),
+      endSession: jest.fn(),
+      getPlayTime: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -77,6 +87,10 @@ describe('AuthService', () => {
           provide: RedisService,
           useValue: mockRedisService,
         },
+        {
+          provide: PlayTimeTrackerService,
+          useValue: mockPlayTimeTrackerService,
+        },
       ],
     }).compile();
 
@@ -84,6 +98,7 @@ describe('AuthService', () => {
     userService = module.get(UserService);
     jwtService = module.get(JwtService);
     redisService = module.get(RedisService);
+    playTimeTrackerService = module.get(PlayTimeTrackerService);
 
     jwtService.sign.mockReturnValue(mockToken);
   });

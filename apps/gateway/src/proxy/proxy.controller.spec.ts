@@ -6,6 +6,7 @@ import { ProxyController } from './proxy.controller';
 import { CustomLoggerService } from '@app/common/logger';
 import { UserRole } from '@app/common/schemas';
 import { Request, Response } from 'express';
+import { GatewayCommandEnum } from '@app/common/dto';
 
 describe('ProxyController', () => {
   let controller: ProxyController;
@@ -86,7 +87,7 @@ describe('ProxyController', () => {
       controller.handleSignUp(mockRequest, mockResponse, mockRequest.body, {});
 
       expect(authClient.send).toHaveBeenCalledWith(
-        { cmd: 'proxy' },
+        { cmd: GatewayCommandEnum.AUTH },
         expect.objectContaining({
           path: 'sign-up',
           method: 'POST',
@@ -137,7 +138,7 @@ describe('ProxyController', () => {
       });
 
       expect(authClient.send).toHaveBeenCalledWith(
-        { cmd: 'proxy' },
+        { cmd: GatewayCommandEnum.AUTH },
         expect.objectContaining({
           path: 'login',
           method: 'POST',
@@ -200,7 +201,7 @@ describe('ProxyController', () => {
       controller.handleGetEvents(mockRequest, mockResponse);
 
       expect(eventClient.send).toHaveBeenCalledWith(
-        { cmd: 'proxy' },
+        { cmd: GatewayCommandEnum.EVENT },
         expect.objectContaining({
           path: 'events',
           method: 'GET',
@@ -221,7 +222,7 @@ describe('ProxyController', () => {
       controller.handleGetEventById('test-event-id', eventRequest, mockResponse);
 
       expect(eventClient.send).toHaveBeenCalledWith(
-        { cmd: 'proxy' },
+        { cmd: GatewayCommandEnum.EVENT },
         expect.objectContaining({
           path: 'events/test-event-id',
           method: 'GET',
@@ -253,7 +254,7 @@ describe('ProxyController', () => {
       controller.handleGetEventRewards('test-event-id', rewardsRequest, mockResponse);
 
       expect(eventClient.send).toHaveBeenCalledWith(
-        { cmd: 'proxy' },
+        { cmd: GatewayCommandEnum.EVENT },
         expect.objectContaining({
           path: 'events/test-event-id/rewards',
           method: 'GET',
@@ -289,4 +290,4 @@ describe('ProxyController', () => {
       });
     });
   });
-}); 
+});

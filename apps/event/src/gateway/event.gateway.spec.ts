@@ -17,7 +17,7 @@ interface ProxyPayload {
 
 describe('EventGateway', () => {
   let gateway: EventGateway;
-  let service: EventService;
+  let service: jest.Mocked<EventService>;
   let logger: CustomLoggerService;
 
   const mockEvent = {
@@ -80,6 +80,7 @@ describe('EventGateway', () => {
             addEventReward: jest.fn(),
             findAllEvents: jest.fn(),
             findEventById: jest.fn(),
+            findEventsByStatus: jest.fn(),
           },
         },
         {
@@ -94,7 +95,7 @@ describe('EventGateway', () => {
     }).compile();
 
     gateway = module.get<EventGateway>(EventGateway);
-    service = module.get<EventService>(EventService);
+    service = module.get(EventService);
     logger = module.get<CustomLoggerService>(CustomLoggerService);
   });
 
@@ -136,7 +137,10 @@ describe('EventGateway', () => {
         } as ProxyPayload,
       };
 
-      const mockEvents = [mockEvent, { ...mockEvent, eventId: 'test-event-id-2' }] as unknown as Event[];
+      const mockEvents = [
+        mockEvent,
+        { ...mockEvent, eventId: 'test-event-id-2' },
+      ] as unknown as Event[];
       jest.spyOn(service, 'findAllEvents').mockResolvedValue(mockEvents);
 
       const result = await gateway.handleProxyRequest(mockRequest);
@@ -145,7 +149,9 @@ describe('EventGateway', () => {
       expect(result).toEqual({
         statusCode: 200,
         message: '이벤트 목록을 성공적으로 조회했습니다.',
-        data: mockEvents,
+        data: {
+          events: mockEvents,
+        },
         timestamp: expect.any(String),
       });
     });
@@ -212,7 +218,10 @@ describe('EventGateway', () => {
       expect(result).toEqual({
         statusCode: 200,
         message: '이벤트 보상 목록을 성공적으로 조회했습니다.',
-        data: mockEvent.rewards,
+        data: {
+          eventId: mockEvent.eventId,
+          rewards: mockEvent.rewards,
+        },
         timestamp: expect.any(String),
       });
     });
@@ -259,7 +268,10 @@ describe('EventGateway', () => {
       expect(result).toEqual({
         statusCode: 200,
         message: '이벤트 보상이 성공적으로 추가되었습니다.',
-        data: eventWithReward,
+        data: {
+          eventId: eventWithReward.eventId,
+          rewards: eventWithReward.rewards,
+        },
         timestamp: expect.any(String),
       });
     });
@@ -276,9 +288,7 @@ describe('EventGateway', () => {
         } as ProxyPayload,
       };
 
-      await expect(gateway.handleProxyRequest(mockRequest)).rejects.toThrow(
-        'User ID is required',
-      );
+      await expect(gateway.handleProxyRequest(mockRequest)).rejects.toThrow('User ID is required');
     });
 
     it('should throw NotFoundException for unknown path', async () => {
@@ -293,9 +303,7 @@ describe('EventGateway', () => {
         } as ProxyPayload,
       };
 
-      await expect(gateway.handleProxyRequest(mockRequest)).rejects.toThrow(
-        'Cannot GET /unknown',
-      );
+      await expect(gateway.handleProxyRequest(mockRequest)).rejects.toThrow('Cannot GET /unknown');
     });
 
     it('should throw BadRequestException for unsupported method', async () => {
@@ -315,4 +323,4 @@ describe('EventGateway', () => {
       );
     });
   });
-}); 
+});
