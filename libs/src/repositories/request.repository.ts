@@ -19,24 +19,4 @@ export class RequestRepository {
   async findById(requestId: string): Promise<Request | null> {
     return this.requestModel.findById(requestId).exec();
   }
-
-  async updateStatus(
-    requestId: string,
-    status: RequestStatus,
-    metadata?: Record<string, any>,
-  ): Promise<Request | null> {
-    const update: Record<string, any> = { status };
-
-    if (status === RequestStatus.APPROVED) {
-      update.approvedAt = new Date();
-    } else if (status === RequestStatus.COMPLETED) {
-      update.completedAt = new Date();
-    }
-
-    if (metadata) {
-      update.metadata = metadata;
-    }
-
-    return this.requestModel.findOneAndUpdate({ requestId }, update, { new: true }).exec();
-  }
 }
