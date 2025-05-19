@@ -2,6 +2,10 @@
 
 이벤트/보상 관리 플랫폼을 위한 NestJS 기반 MSA(Gateway, Auth, Event) 아키텍처 백엔드 API
 
+## 기술 명세
+
+- [기술 명세 문서](https://thirsty-door-aa7.notion.site/1f3743a9480e80d2af68caa3c4d44f4d)
+
 ## 프로젝트 구조
 
 ```
@@ -95,14 +99,22 @@ $ npm run test:e2e
 ## 주요 기능
 
 ### Gateway
+
 - 모든 요청을 받아 라우팅
 - 역할 기반 Account, Authorization, Authentication 구현 (RBAC)
 
 ### Auth
+
 - 유저 등록 / 로그인 / 역할 관리
 - JWT 발급 및 관리
 
 ### Event
+
 - 이벤트 및 보상 관리
 - 유저 보상 요청 및 검증
 - 보상 요청 내역 조회
+
+## API 문서
+
+- Swagger UI를 통한 API 문서 제공
+- gateway 서비스의 `/api/docs` 엔드포인트에서 Swagger UI에 접근 가능
