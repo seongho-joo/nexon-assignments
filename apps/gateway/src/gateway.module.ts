@@ -14,7 +14,6 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from '@app/common/strategies/jwt.strategy';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from '@app/common/guards';
-import { PlayTimeTrackerService } from '@app/common/services/play-time-tracker.service';
 
 @Module({
   imports: [
@@ -57,7 +56,6 @@ import { PlayTimeTrackerService } from '@app/common/services/play-time-tracker.s
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
     },
-    PlayTimeTrackerService,
   ],
 })
 export class GatewayModule {}
