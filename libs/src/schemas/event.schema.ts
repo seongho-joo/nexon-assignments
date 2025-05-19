@@ -133,23 +133,7 @@ export class Event extends Document {
 
   /** 지급할 보상 목록 */
   @Prop({
-    type: [
-      {
-        name: { type: String, required: true },
-        description: { type: String, required: true },
-        rewardPoint: { type: Number, required: true },
-        condition: {
-          type: {
-            type: String,
-            enum: RewardConditionType,
-            required: true,
-          },
-          targetValue: { type: Number, required: true },
-          description: { type: String, required: true },
-          additionalParams: { type: Object },
-        },
-      },
-    ],
+    type: [{ type: MongooseSchema.Types.Mixed }],
     default: [],
   })
   rewards: Reward[];
