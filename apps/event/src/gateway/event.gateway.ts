@@ -9,6 +9,7 @@ import {
   EventResponseDto,
   EventListResponseDto,
   EventRewardsResponseDto,
+  RewardConditionDto,
 } from '@app/common/dto/event';
 import { BadRequestException, NotFoundException } from '@app/common/exceptions';
 import { transformToDto, transformToPaginatedDto } from '@app/common/utils/dto.helper';
@@ -35,30 +36,34 @@ export class EventGateway {
     method: string;
     body: ProxyPayload;
   }): Promise<BaseResponseDto<unknown>> {
-    this.logger.log(`Received proxy request for path: ${data.path}, method: ${data.method}`);
+    // /api 접두사 제거
+    const path = data.path.replace(/^api\//, '');
+    this.logger.log(`Received proxy request for path: ${path}, method: ${data.method}`);
 
     // GET /events or POST /events
-    if (data.path === 'events') {
-      return this.handleEvents(data);
-    }
-
-    // GET /events/:eventId
-    const eventMatch = data.path.match(/^events\/([^/]+)$/);
-    if (eventMatch && data.method === 'GET') {
-      const eventId = eventMatch[1];
-      return this.handleEventById({ ...data, eventId });
+    if (path === 'events') {
+      return this.handleEvents({ ...data, path });
     }
 
     // GET /events/:eventId/rewards or POST /events/:eventId/rewards
-    const rewardsMatch = data.path.match(/^events\/([^/]+)\/rewards$/);
+    const rewardsMatch = path.match(/^events\/([^/]+)\/rewards$/);
     if (rewardsMatch) {
-      return this.handleEventRewards(data);
+      const eventId = rewardsMatch[1];
+      return this.handleEventRewards({ ...data, path, eventId });
     }
 
-    throw new RpcException(new NotFoundException(`Cannot ${data.method} /${data.path}`));
+    // GET /events/:eventId
+    const eventMatch = path.match(/^events\/([^/]+)$/);
+    if (eventMatch && data.method === 'GET') {
+      const eventId = eventMatch[1];
+      return this.handleEventById({ ...data, path, eventId });
+    }
+
+    throw new RpcException(new NotFoundException(`Cannot ${data.method} /${path}`));
   }
 
   private async handleEvents(data: {
+    path: string;
     method: string;
     body: ProxyPayload;
   }): Promise<BaseResponseDto<EventResponseDto | EventListResponseDto>> {
@@ -101,6 +106,7 @@ export class EventGateway {
   }
 
   private async handleEventById(data: {
+    path: string;
     method: string;
     body: ProxyPayload;
     eventId: string;
@@ -128,26 +134,27 @@ export class EventGateway {
   }
 
   private async handleEventRewards(data: {
+    path: string;
     method: string;
     body: ProxyPayload;
+    eventId: string;
   }): Promise<BaseResponseDto<EventRewardsResponseDto>> {
-    const { eventId } = data.body.params as { eventId: string };
-
     switch (data.method) {
       case 'POST': {
-        const rewardDto = data.body.body as RewardDto;
+        const rewardDto = Object.assign(new RewardDto(), data.body.body as RewardDto);
+        rewardDto.condition = Object.assign(new RewardConditionDto(), rewardDto.condition);
 
-        if (!eventId) {
+        if (!data.eventId) {
           throw new RpcException(new BadRequestException('Event ID is required'));
         }
 
-        const event = await this.eventService.addEventReward(eventId, rewardDto);
+        const event = await this.eventService.addEventReward(data.eventId, rewardDto);
         if (!event) {
           throw new RpcException(new NotFoundException('Event not found'));
         }
 
         const response = transformToDto(EventRewardsResponseDto, {
-          eventId: event.eventId,
+          _id: event._id,
           rewards: event.rewards,
         });
 
@@ -159,14 +166,14 @@ export class EventGateway {
         };
       }
       case 'GET': {
-        const event = await this.eventService.findEventById(eventId);
+        const event = await this.eventService.findEventById(data.eventId);
 
         if (!event) {
           throw new RpcException(new NotFoundException('Event not found'));
         }
 
         const response = transformToDto(EventRewardsResponseDto, {
-          eventId: event.eventId,
+          _id: event._id,
           rewards: event.rewards,
         });
 

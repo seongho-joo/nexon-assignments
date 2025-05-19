@@ -41,7 +41,7 @@ export function transformToDto<T, V extends Record<string, any>>(
   // MongoDB ObjectId 처리
   if (plainObject['_id']) {
     plainObject['id'] = toObjectId(plainObject['_id']);
-    delete plainObject['_id'];
+    // _id를 보존하여 @Transform 데코레이터가 사용할 수 있도록 함
   }
 
   // 내부 메타데이터 제거

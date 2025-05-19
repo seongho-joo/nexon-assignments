@@ -5,7 +5,7 @@ import { EventStatus } from '@app/common/schemas';
 
 export class EventResponseDto {
   @Expose()
-  @Transform(({ obj }) => obj._id)
+  @Transform(({ obj }) => obj._id?.toString())
   @ApiProperty({ description: '이벤트 ID' })
   eventId: string;
 
@@ -53,7 +53,7 @@ export class EventResponseDto {
 
 export class EventRewardsResponseDto {
   @Expose()
-  @Transform(({ obj }) => obj._id)
+  @Transform(({ obj }) => obj._id?.toString())
   @ApiProperty({ description: '이벤트 ID' })
   eventId: string;
 

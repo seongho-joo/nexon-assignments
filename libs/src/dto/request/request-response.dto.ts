@@ -4,7 +4,7 @@ import { RequestStatus } from '@app/common/schemas';
 
 export class RequestResponseDto {
   @Expose()
-  @Transform(({ obj }) => obj.id)
+  @Transform(({ obj }) => obj._id?.toString())
   @ApiProperty({ description: '요청 ID' })
   requestId: string;
 

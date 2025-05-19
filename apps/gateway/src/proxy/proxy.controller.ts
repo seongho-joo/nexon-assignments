@@ -365,7 +365,7 @@ export class ProxyController {
     this.routeToMicroservice(
       'EVENT',
       this.eventClient,
-      'events/rewards',
+      `events/${eventId}/rewards`,
       req,
       res,
       GatewayCommandEnum.EVENT,
