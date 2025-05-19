@@ -1,18 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type, Expose, Transform } from 'class-transformer';
+import { Type, Expose } from 'class-transformer';
 import { IsNotEmpty, IsNumber, IsString, Min, ValidateNested } from 'class-validator';
 import { RewardConditionDto } from './reward-condition.dto';
 import { Reward } from '@app/common/schemas';
 
 export class RewardDto {
-  @Expose()
-  @Transform(({ obj }) => obj.id)
-  @ApiProperty({
-    description: '보상 ID',
-    example: '507f1f77bcf86cd799439011',
-  })
-  rewardId: string;
-
   @Expose()
   @ApiProperty({
     description: '보상 이름',

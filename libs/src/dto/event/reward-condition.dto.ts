@@ -5,14 +5,6 @@ import { RewardCondition, RewardConditionType } from '@app/common/schemas';
 
 export class RewardConditionDto {
   @Expose()
-  @Transform(({ obj }) => obj.id)
-  @ApiProperty({
-    description: '조건 ID',
-    example: '507f1f77bcf86cd799439011',
-  })
-  conditionId: string;
-
-  @Expose()
   @ApiProperty({
     description: '조건 유형',
     enum: RewardConditionType,
