@@ -28,7 +28,7 @@ describe('RewardConditionValidatorService', () => {
   });
 
   it('should return isValid true if play time is enough', async () => {
-    const redisService = { get: jest.fn().mockResolvedValue(100) };
+    const redisService = { get: jest.fn().mockResolvedValue(600000) };
     (service as any).redisService = redisService;
     const result = await service.validateCondition({
       type: RewardConditionType.PLAY_TIME,
@@ -40,7 +40,7 @@ describe('RewardConditionValidatorService', () => {
   });
 
   it('should return isValid false if play time is not enough', async () => {
-    const redisService = { get: jest.fn().mockResolvedValue(1) };
+    const redisService = { get: jest.fn().mockResolvedValue(60000) };
     (service as any).redisService = redisService;
     const result = await service.validateCondition({
       type: RewardConditionType.PLAY_TIME,

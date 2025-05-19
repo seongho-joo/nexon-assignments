@@ -6,6 +6,7 @@ import { RedisEnum } from '@app/common/redis/redis.enum';
 @Injectable()
 export class PlayTimeTrackerService implements OnModuleInit {
   private readonly PLAY_TIME_SESSION_START_KEY_PREFIX = RedisEnum.PLAY_TIME_SESSION_START.key + ':';
+  private readonly MINIMUM_PLAY_TIME = 1000 * 60;
 
   constructor(
     private readonly redisService: RedisService,
@@ -16,7 +17,7 @@ export class PlayTimeTrackerService implements OnModuleInit {
 
   async onModuleInit() {
     // 주기적으로 실행되는 플레이 타임 업데이트 작업 설정
-    setInterval(() => this.updateAllActiveSessions(), 60000); // 10초마다 실행
+    setInterval(() => this.updateAllActiveSessions(), this.MINIMUM_PLAY_TIME);
   }
 
   async startSession(userId: string): Promise<void> {
@@ -37,20 +38,22 @@ export class PlayTimeTrackerService implements OnModuleInit {
     }
 
     const currentTime = Date.now();
-    const sessionDuration = Math.floor((currentTime - Number(sessionStart ?? 0)) / 60000);
+    const sessionDurationMs = currentTime - Number(sessionStart ?? 0);
 
-    await this.redisService.increment(playTimeKey, sessionDuration);
+    const prevPlayTimeMs = Number((await this.redisService.get<string>(playTimeKey)) ?? 0);
+    const newPlayTimeMs = prevPlayTimeMs + sessionDurationMs;
+    await this.redisService.set(playTimeKey, newPlayTimeMs);
     await this.redisService.delete(sessionStartKey);
 
-    this.logger.log(`Ended session for user ${userId}, duration: ${sessionDuration} minutes`);
-
-    return sessionDuration;
+    this.logger.log(`Ended session for user ${userId}, duration: +${sessionDurationMs} ms`);
+    return Math.floor(newPlayTimeMs / this.MINIMUM_PLAY_TIME);
   }
 
   async getPlayTime(userId: string): Promise<number> {
     const playTimeKey = this.getPlayTimeKey(userId);
-    const playTime = await this.redisService.get<string>(playTimeKey);
-    return Number(playTime ?? 0);
+    const playTimeMs = await this.redisService.get<string>(playTimeKey);
+
+    return Math.floor(Number(playTimeMs ?? 0) / this.MINIMUM_PLAY_TIME);
   }
 
   private async updateAllActiveSessions(): Promise<void> {
@@ -63,7 +66,7 @@ export class PlayTimeTrackerService implements OnModuleInit {
         lockValue,
         'NX',
         'PX',
-        63000,
+        this.MINIMUM_PLAY_TIME + 1000 * 20,
         (err, reply) => {
           if (err) return reject(err);
           resolve(reply === 'OK');
@@ -84,17 +87,21 @@ export class PlayTimeTrackerService implements OnModuleInit {
 
         if (sessionStart) {
           const currentTime = Date.now();
-          const sessionDuration = Math.floor((currentTime - Number(sessionStart ?? 0)) / 60000);
+          const sessionDurationMs = currentTime - Number(sessionStart ?? 0);
 
           await this.redisService.set(sessionKey, currentTime);
 
           const playTimeKey = this.getPlayTimeKey(userId);
-          await this.redisService.increment(playTimeKey, sessionDuration);
+          const prevPlayTimeMs = Number((await this.redisService.get<string>(playTimeKey)) ?? 0);
+          const newPlayTimeMs = prevPlayTimeMs + sessionDurationMs;
+          await this.redisService.set(playTimeKey, newPlayTimeMs);
 
-          this.logger.log(`Updated play time for user ${userId}: +${sessionDuration} minutes`);
+          this.logger.log(`Updated play time for user ${userId}: +${sessionDurationMs} ms`);
         }
       }
     } finally {
+      // 락 해제 전 1s 대기
+      await new Promise(resolve => setTimeout(resolve, 1000));
       await new Promise<void>((resolve, reject) => {
         this.redisService.redisNativeClient.del(lockKey, err => {
           if (err) return reject(err);

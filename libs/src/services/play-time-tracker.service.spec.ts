@@ -29,7 +29,7 @@ describe('PlayTimeTrackerService', () => {
     redisService.get.mockResolvedValue(Date.now() - 1000 * 60);
     redisService.delete.mockResolvedValue(undefined);
     await service.endSession('user');
-    expect(redisService.increment).toHaveBeenCalled();
+    expect(redisService.set).toHaveBeenCalled();
     expect(redisService.delete).toHaveBeenCalled();
   });
 
@@ -40,9 +40,9 @@ describe('PlayTimeTrackerService', () => {
   });
 
   it('should get play time', async () => {
-    redisService.get.mockResolvedValue(123);
+    redisService.get.mockResolvedValue(123000);
     const result = await service.getPlayTime('user');
-    expect(result).toBe(123);
+    expect(result).toBe(2);
   });
 
   it('should return 0 if no play time found', async () => {

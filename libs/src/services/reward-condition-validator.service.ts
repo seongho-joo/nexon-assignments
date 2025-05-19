@@ -51,8 +51,9 @@ export class RewardConditionValidatorService {
     userId: string,
   ): Promise<ValidateInfo> {
     const { key } = RedisEnum.PLAY_TIME.getKeyAndTTL(userId);
-    const playTimeMinutes = await this.redisService.get<string>(key);
-    const isValid = Number(playTimeMinutes ?? 0) >= condition.targetValue;
+    const playTimeMs = await this.redisService.get<string>(key);
+    const playTimeMinutes = Math.floor(Number(playTimeMs ?? 0) / 60000);
+    const isValid = playTimeMinutes >= condition.targetValue;
 
     return {
       isValid,
