@@ -28,6 +28,11 @@ describe('RequestGateway', () => {
     updatedAt: new Date(),
   } as unknown as Request & Document;
 
+  const mockRequestList = {
+    requests: [mockRequest, { ...mockRequest, requestId: 'test-request-id-2' } as unknown as Request & Document],
+    totalCount: 2,
+  } as { requests: Request[]; totalCount: number };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -37,6 +42,8 @@ describe('RequestGateway', () => {
           useValue: {
             createRequest: jest.fn(),
             findRequestById: jest.fn(),
+            findAllRequests: jest.fn(),
+            findRequestsByUserId: jest.fn(),
           },
         },
         {
@@ -56,7 +63,94 @@ describe('RequestGateway', () => {
     logger = module.get<CustomLoggerService>(CustomLoggerService);
   });
 
-  describe('handleProxyRequest', () => {
+  describe('handleRequest', () => {
+    it('should handle GET /requests', async () => {
+      const data = {
+        path: 'requests',
+        method: 'GET',
+        body: {
+          body: {},
+          headers: {},
+          query: {},
+          params: {},
+        },
+      };
+
+      service.findAllRequests.mockResolvedValue(mockRequestList);
+
+      const result = await gateway.handleRequest(data);
+
+      expect(service.findAllRequests).toHaveBeenCalled();
+      expect(result).toEqual({
+        statusCode: HttpStatus.OK,
+        message: '요청 목록을 성공적으로 조회했습니다.',
+        data: {
+          requests: expect.arrayContaining([
+            expect.objectContaining({ requestId: 'test-request-id' }),
+            expect.objectContaining({ requestId: 'test-request-id-2' }),
+          ]),
+          totalCount: 2,
+        },
+        timestamp: expect.any(String),
+      });
+    });
+
+    it('should handle GET /users/:userId/requests', async () => {
+      const data = {
+        path: 'users/test-user-id/requests',
+        method: 'GET',
+        body: {
+          body: {},
+          headers: {},
+          query: {},
+          params: {},
+        },
+      };
+
+      service.findRequestsByUserId.mockResolvedValue(mockRequestList);
+
+      const result = await gateway.handleRequest(data);
+
+      expect(service.findRequestsByUserId).toHaveBeenCalledWith('test-user-id');
+      expect(result).toEqual({
+        statusCode: HttpStatus.OK,
+        message: '사용자의 요청 목록을 성공적으로 조회했습니다.',
+        data: {
+          requests: expect.arrayContaining([
+            expect.objectContaining({ requestId: 'test-request-id' }),
+            expect.objectContaining({ requestId: 'test-request-id-2' }),
+          ]),
+          totalCount: 2,
+        },
+        timestamp: expect.any(String),
+      });
+    });
+
+    it('should handle GET /users/:userId/requests/:requestId', async () => {
+      const data = {
+        path: 'users/test-user-id/requests/test-request-id',
+        method: 'GET',
+        body: {
+          body: {},
+          headers: {},
+          query: {},
+          params: {},
+        },
+      };
+
+      service.findRequestById.mockResolvedValue(mockRequest);
+
+      const result = await gateway.handleRequest(data);
+
+      expect(service.findRequestById).toHaveBeenCalledWith('test-request-id');
+      expect(result).toEqual({
+        statusCode: HttpStatus.OK,
+        message: '요청을 성공적으로 조회했습니다.',
+        data: expect.objectContaining({ requestId: 'test-request-id' }),
+        timestamp: expect.any(String),
+      });
+    });
+
     it('should handle POST /requests', async () => {
       const data = {
         path: 'requests',
@@ -71,7 +165,7 @@ describe('RequestGateway', () => {
 
       service.createRequest.mockResolvedValue(mockRequest);
 
-      const result = await gateway.handleProxyRequest(data);
+      const result = await gateway.handleRequest(data);
 
       expect(service.createRequest).toHaveBeenCalledWith(
         { eventId: mockRequest.eventId },
@@ -99,12 +193,12 @@ describe('RequestGateway', () => {
 
       service.findRequestById.mockResolvedValue(mockRequest);
 
-      const result = await gateway.handleProxyRequest(data);
+      const result = await gateway.handleRequest(data);
 
       expect(service.findRequestById).toHaveBeenCalledWith('test-request-id');
       expect(result).toEqual({
         statusCode: HttpStatus.OK,
-        message: '보상 요청을 성공적으로 조회했습니다.',
+        message: '요청을 성공적으로 조회했습니다.',
         data: expect.any(Object),
         timestamp: expect.any(String),
       });
@@ -122,9 +216,9 @@ describe('RequestGateway', () => {
         },
       };
 
-      await expect(gateway.handleProxyRequest(data)).rejects.toThrow(
+      await expect(gateway.handleRequest(data)).rejects.toThrow(
         new NotFoundException('Cannot GET /unknown'),
       );
     });
   });
-}); 
+});

@@ -14,6 +14,7 @@ import {
   Reward,
   User,
   RewardConditionType,
+  Request,
 } from '@app/common/schemas';
 import { Types } from 'mongoose';
 import { CreateRequestDto } from '@app/common/dto/request';
@@ -27,31 +28,33 @@ describe('RequestService', () => {
   let userRepository: jest.Mocked<UserRepository>;
   let logger: jest.Mocked<CustomLoggerService>;
 
-  const mockUser: Partial<User> = {
-    _id: new Types.ObjectId('6460f5b082c8a2a97a4a89b1'),
-    userId: 'user123',
-    username: 'testuser',
-    balance: 1000,
-  };
-
   const mockEvent: Partial<Event> = {
-    _id: new Types.ObjectId('6460f5b082c8a2a97a4a89b2'),
     eventId: 'event123',
-    title: '테스트 이벤트',
+    title: 'Test Event',
+    description: 'Test Description',
     rewards: [
       {
-        name: '플레이타임 보상',
-        rewardPoint: 500,
-        description: '1시간 플레이 보상',
+        rewardId: 'reward123',
+        rewardPoint: 100,
+        name: 'Play Time Reward',
+        description: 'Reward for playing 1 hour',
         condition: {
           type: RewardConditionType.PLAY_TIME,
-          targetValue: 60,
-          description: '1시간 이상 플레이',
+          targetValue: 3600,
+          description: 'Play for 1 hour',
           additionalParams: {},
         },
-      },
+      } as Reward,
     ],
   };
+
+  const mockUser: Partial<User> = {
+    userId: 'user123',
+    username: 'testuser',
+    balance: 0,
+  };
+
+  const mockReward: Reward = mockEvent.rewards![0] as Reward;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -63,6 +66,10 @@ describe('RequestService', () => {
             create: jest.fn(),
             findById: jest.fn(),
             findByUserIdAndEventId: jest.fn(),
+            findAll: jest.fn(),
+            count: jest.fn(),
+            findByUserId: jest.fn(),
+            countByUserId: jest.fn(),
           },
         },
         {
@@ -264,6 +271,122 @@ describe('RequestService', () => {
 
       expect(requestRepository.findById).toHaveBeenCalledWith('request123');
       expect(result).toBeNull();
+    });
+  });
+
+  describe('findAllRequests', () => {
+    it('should return all requests with total count', async () => {
+      const mockRequests = [
+        {
+          _id: new Types.ObjectId(),
+          requestId: 'request1',
+          userId: 'user123',
+          eventId: 'event123',
+          status: RequestStatus.APPROVED,
+          createdAt: new Date('2024-03-20'),
+          updatedAt: new Date('2024-03-20'),
+          rejectionReason: null,
+          approvedAt: new Date('2024-03-20'),
+          completedAt: null,
+          metadata: {},
+        },
+        {
+          _id: new Types.ObjectId(),
+          requestId: 'request2',
+          userId: 'user456',
+          eventId: 'event456',
+          status: RequestStatus.APPROVED,
+          createdAt: new Date('2024-03-19'),
+          updatedAt: new Date('2024-03-19'),
+          rejectionReason: null,
+          approvedAt: new Date('2024-03-19'),
+          completedAt: null,
+          metadata: {},
+        },
+      ] as unknown as Request[];
+
+      requestRepository.findAll.mockResolvedValue(mockRequests);
+      requestRepository.count.mockResolvedValue(2);
+
+      const result = await service.findAllRequests();
+
+      expect(result).toEqual({
+        requests: mockRequests,
+        totalCount: 2,
+      });
+      expect(requestRepository.findAll).toHaveBeenCalled();
+      expect(requestRepository.count).toHaveBeenCalled();
+    });
+
+    it('should return empty array with zero count when no requests exist', async () => {
+      requestRepository.findAll.mockResolvedValue([]);
+      requestRepository.count.mockResolvedValue(0);
+
+      const result = await service.findAllRequests();
+
+      expect(result).toEqual({
+        requests: [],
+        totalCount: 0,
+      });
+    });
+  });
+
+  describe('findRequestsByUserId', () => {
+    const userId = 'user123';
+
+    it('should return user requests with total count', async () => {
+      const mockRequests = [
+        {
+          _id: new Types.ObjectId(),
+          requestId: 'request1',
+          userId,
+          eventId: 'event123',
+          status: RequestStatus.APPROVED,
+          createdAt: new Date('2024-03-20'),
+          updatedAt: new Date('2024-03-20'),
+          rejectionReason: null,
+          approvedAt: new Date('2024-03-20'),
+          completedAt: null,
+          metadata: {},
+        },
+        {
+          _id: new Types.ObjectId(),
+          requestId: 'request2',
+          userId,
+          eventId: 'event456',
+          status: RequestStatus.APPROVED,
+          createdAt: new Date('2024-03-19'),
+          updatedAt: new Date('2024-03-19'),
+          rejectionReason: null,
+          approvedAt: new Date('2024-03-19'),
+          completedAt: null,
+          metadata: {},
+        },
+      ] as unknown as Request[];
+
+      requestRepository.findByUserId.mockResolvedValue(mockRequests);
+      requestRepository.countByUserId.mockResolvedValue(2);
+
+      const result = await service.findRequestsByUserId(userId);
+
+      expect(result).toEqual({
+        requests: mockRequests,
+        totalCount: 2,
+      });
+      expect(requestRepository.findByUserId).toHaveBeenCalledWith(userId);
+      expect(requestRepository.countByUserId).toHaveBeenCalledWith(userId);
+    });
+
+    it('should return empty array with zero count when user has no requests', async () => {
+      requestRepository.findByUserId.mockResolvedValue([]);
+      requestRepository.countByUserId.mockResolvedValue(0);
+
+      const result = await service.findRequestsByUserId(userId);
+
+      expect(result).toEqual({
+        requests: [],
+        totalCount: 0,
+      });
     });
   });
 });
