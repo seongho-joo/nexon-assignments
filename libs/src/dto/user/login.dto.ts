@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
 import { UserInfo } from '@app/common/dto/user';
 
 export class LoginRequestDto {
@@ -21,14 +22,18 @@ export class LoginRequestDto {
 }
 
 export class LoginResponseDto {
+  @Expose()
   @ApiProperty({
     description: 'JWT 액세스 토큰',
     example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
   })
   accessToken: string;
 
+  @Expose()
+  @Type(() => UserInfo)
   @ApiProperty({
     description: '사용자 정보',
+    type: () => UserInfo,
     example: {
       id: '507f1f77bcf86cd799439011',
       username: 'john.doe',

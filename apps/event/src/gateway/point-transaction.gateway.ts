@@ -3,12 +3,12 @@ import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CustomLoggerService } from '@app/common/logger';
 import { PointTransactionService } from '@app/common/services/point-transaction.service';
 import { BaseResponseDto, GatewayCommandEnum } from '@app/common/dto';
-import { plainToClass } from 'class-transformer';
 import { BadRequestException, NotFoundException } from '@app/common/exceptions';
 import {
   PointTransactionListResponseDto,
   PointTransactionResponseDto,
 } from '@app/common/dto/point-transaction';
+import { transformToPaginatedDto } from '@app/common/utils/dto.helper';
 
 interface ProxyPayload {
   body: unknown;
@@ -50,18 +50,15 @@ export class PointTransactionGateway {
     const { transactions, totalCount } =
       await this.pointTransactionService.findTransactionsByUserId(userId);
 
-    const response: PointTransactionListResponseDto = {
-      transactions: transactions.map(tx =>
-        plainToClass(PointTransactionResponseDto, {
-          transactionId: tx._id,
-          userId: tx.userId,
-          amount: tx.amount,
-          type: tx.type,
-          description: tx.description,
-          createdAt: tx.timestamp,
-        }),
-      ),
+    const { items, totalCount: total } = transformToPaginatedDto(
+      PointTransactionResponseDto,
+      transactions,
       totalCount,
+    );
+
+    const response: PointTransactionListResponseDto = {
+      transactions: items,
+      totalCount: total,
     };
 
     return {

@@ -1,10 +1,19 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Type, Expose, Transform } from 'class-transformer';
 import { IsNotEmpty, IsNumber, IsString, Min, ValidateNested } from 'class-validator';
 import { RewardConditionDto } from './reward-condition.dto';
 import { Reward } from '@app/common/schemas';
 
 export class RewardDto {
+  @Expose()
+  @Transform(({ obj }) => obj.id)
+  @ApiProperty({
+    description: '보상 ID',
+    example: '507f1f77bcf86cd799439011',
+  })
+  rewardId: string;
+
+  @Expose()
   @ApiProperty({
     description: '보상 이름',
     example: '첫 로그인 보상',
@@ -13,6 +22,7 @@ export class RewardDto {
   @IsNotEmpty()
   name: string;
 
+  @Expose()
   @ApiProperty({
     description: '보상 포인트',
     example: 1000,
@@ -22,6 +32,7 @@ export class RewardDto {
   @Min(1)
   rewardPoint: number;
 
+  @Expose()
   @ApiProperty({
     description: '보상 설명',
     example: '첫 로그인 시 지급되는 포인트 보상입니다.',
@@ -29,6 +40,7 @@ export class RewardDto {
   @IsString()
   description: string;
 
+  @Expose()
   @ApiProperty({
     description: '보상 조건',
     type: RewardConditionDto,

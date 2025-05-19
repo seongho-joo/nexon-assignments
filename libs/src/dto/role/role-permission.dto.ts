@@ -47,8 +47,8 @@ export class GetRolePermissionsDto {
     example: 'GET',
     required: false,
   })
-  @IsString()
   @IsOptional()
+  @IsString()
   method?: string;
 }
 

@@ -8,8 +8,8 @@ import {
   RequestResponseDto,
   RequestListResponseDto,
 } from '@app/common/dto/request';
-import { plainToClass } from 'class-transformer';
 import { BadRequestException, NotFoundException } from '@app/common/exceptions';
+import { transformToDto, transformToPaginatedDto } from '@app/common/utils/dto.helper';
 
 interface ProxyPayload {
   body: unknown;
@@ -21,8 +21,8 @@ interface ProxyPayload {
 @Controller()
 export class RequestGateway {
   constructor(
-    private readonly logger: CustomLoggerService,
     private readonly requestService: RequestService,
+    private readonly logger: CustomLoggerService,
   ) {
     this.logger.setContext('RequestGateway');
   }
@@ -71,9 +71,15 @@ export class RequestGateway {
 
   private async handleGetRequests(): Promise<BaseResponseDto<RequestListResponseDto>> {
     const { requests, totalCount } = await this.requestService.findAllRequests();
-    const response: RequestListResponseDto = {
-      requests: requests.map(req => plainToClass(RequestResponseDto, req)),
+    const { items, totalCount: total } = transformToPaginatedDto(
+      RequestResponseDto,
+      requests,
       totalCount,
+    );
+
+    const response: RequestListResponseDto = {
+      requests: items,
+      totalCount: total,
     };
 
     return {
@@ -88,7 +94,7 @@ export class RequestGateway {
     requestId: string,
   ): Promise<BaseResponseDto<RequestResponseDto>> {
     const request = await this.requestService.findRequestById(requestId);
-    const response = plainToClass(RequestResponseDto, request);
+    const response = transformToDto(RequestResponseDto, request);
 
     return {
       statusCode: HttpStatus.OK,
@@ -102,9 +108,15 @@ export class RequestGateway {
     userId: string,
   ): Promise<BaseResponseDto<RequestListResponseDto>> {
     const { requests, totalCount } = await this.requestService.findRequestsByUserId(userId);
-    const response: RequestListResponseDto = {
-      requests: requests.map(req => plainToClass(RequestResponseDto, req)),
+    const { items, totalCount: total } = transformToPaginatedDto(
+      RequestResponseDto,
+      requests,
       totalCount,
+    );
+
+    const response: RequestListResponseDto = {
+      requests: items,
+      totalCount: total,
     };
 
     return {
@@ -119,7 +131,7 @@ export class RequestGateway {
     requestId: string,
   ): Promise<BaseResponseDto<RequestResponseDto>> {
     const request = await this.requestService.findRequestById(requestId);
-    const response = plainToClass(RequestResponseDto, request);
+    const response = transformToDto(RequestResponseDto, request);
 
     return {
       statusCode: HttpStatus.OK,
@@ -141,7 +153,7 @@ export class RequestGateway {
     }
 
     const request = await this.requestService.createRequest(createRequestDto, userId);
-    const response = plainToClass(RequestResponseDto, request);
+    const response = transformToDto(RequestResponseDto, request);
 
     return {
       statusCode: HttpStatus.CREATED,

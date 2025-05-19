@@ -1,4 +1,5 @@
 import { IsString } from 'class-validator';
+import { Expose } from 'class-transformer';
 
 export class LogoutRequestDto {
   @IsString()
@@ -6,7 +7,12 @@ export class LogoutRequestDto {
 }
 
 export class LogoutResponseDto {
+  @Expose()
   success: boolean;
+
+  @Expose()
   message?: string;
+
+  @Expose()
   playTimeMinutes?: number;
 } 

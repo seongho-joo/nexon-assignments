@@ -10,8 +10,8 @@ import {
   EventListResponseDto,
   EventRewardsResponseDto,
 } from '@app/common/dto/event';
-import { plainToClass } from 'class-transformer';
 import { BadRequestException, NotFoundException } from '@app/common/exceptions';
+import { transformToDto, transformToPaginatedDto } from '@app/common/utils/dto.helper';
 
 interface ProxyPayload {
   body: unknown;
@@ -23,32 +23,38 @@ interface ProxyPayload {
 @Controller()
 export class EventGateway {
   constructor(
-    private readonly logger: CustomLoggerService,
     private readonly eventService: EventService,
+    private readonly logger: CustomLoggerService,
   ) {
     this.logger.setContext('EventGateway');
   }
 
   @MessagePattern({ cmd: GatewayCommandEnum.EVENT })
-  async handleProxyRequest(data: {
+  async handleRequest(data: {
     path: string;
     method: string;
     body: ProxyPayload;
   }): Promise<BaseResponseDto<unknown>> {
     this.logger.log(`Received proxy request for path: ${data.path}, method: ${data.method}`);
 
-    const eventIdMatch = data.path.match(/^events\/([^/]+)$/);
-    const eventRewardsMatch = data.path.match(/^events\/([^/]+)\/rewards$/);
-
-    if (data.path === '' || data.path === 'events') {
+    // GET /events or POST /events
+    if (data.path === 'events') {
       return this.handleEvents(data);
-    } else if (eventIdMatch) {
-      return this.handleEventById({ ...data, eventId: eventIdMatch[1] });
-    } else if (data.path === 'events/rewards' || eventRewardsMatch) {
+    }
+
+    // GET /events/:eventId
+    const eventMatch = data.path.match(/^events\/([^/]+)$/);
+    if (eventMatch && data.method === 'GET') {
+      const eventId = eventMatch[1];
+      return this.handleEventById({ ...data, eventId });
+    }
+
+    // GET /events/:eventId/rewards or POST /events/:eventId/rewards
+    const rewardsMatch = data.path.match(/^events\/([^/]+)\/rewards$/);
+    if (rewardsMatch) {
       return this.handleEventRewards(data);
     }
 
-    this.logger.warn(`Unknown path requested in Event service: ${data.path}`);
     throw new RpcException(new NotFoundException(`Cannot ${data.method} /${data.path}`));
   }
 
@@ -66,7 +72,7 @@ export class EventGateway {
         }
 
         const event = await this.eventService.createEvent(createEventDto, userId);
-        const response = plainToClass(EventResponseDto, event);
+        const response = transformToDto(EventResponseDto, event);
 
         return {
           statusCode: HttpStatus.CREATED,
@@ -78,7 +84,7 @@ export class EventGateway {
       case 'GET': {
         this.logger.log('Fetching all events');
         const events = await this.eventService.findAllEvents();
-        const response = plainToClass(EventListResponseDto, { events });
+        const response = transformToDto(EventListResponseDto, { events });
 
         return {
           statusCode: HttpStatus.OK,
@@ -106,7 +112,7 @@ export class EventGateway {
         throw new RpcException(new NotFoundException('Event not found'));
       }
 
-      const response = plainToClass(EventResponseDto, event);
+      const response = transformToDto(EventResponseDto, event);
 
       return {
         statusCode: HttpStatus.OK,
@@ -140,7 +146,7 @@ export class EventGateway {
           throw new RpcException(new NotFoundException('Event not found'));
         }
 
-        const response = plainToClass(EventRewardsResponseDto, {
+        const response = transformToDto(EventRewardsResponseDto, {
           eventId: event.eventId,
           rewards: event.rewards,
         });
@@ -159,7 +165,7 @@ export class EventGateway {
           throw new RpcException(new NotFoundException('Event not found'));
         }
 
-        const response = plainToClass(EventRewardsResponseDto, {
+        const response = transformToDto(EventRewardsResponseDto, {
           eventId: event.eventId,
           rewards: event.rewards,
         });
