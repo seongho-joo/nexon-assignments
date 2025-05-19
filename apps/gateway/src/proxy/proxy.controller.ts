@@ -13,6 +13,7 @@ import {
   Query,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { Request, Response } from 'express';
@@ -54,7 +55,12 @@ import {
   EventRewardsResponseDto,
 } from '@app/common/dto/event';
 import { RewardDto } from '@app/common/dto/event/reward.dto';
-import { CreateRequestDto, RequestResponseDto } from '@app/common/dto/request';
+import {
+  CreateRequestDto,
+  RequestResponseDto,
+  RequestListResponseDto,
+} from '@app/common/dto/request';
+import { OwnershipGuard } from '@app/common/guards';
 
 interface ProxyPayload {
   path: string;
@@ -513,6 +519,102 @@ export class ProxyController {
       'EVENT',
       this.eventClient,
       `requests/${requestId}`,
+      req,
+      res,
+      GatewayCommandEnum.REQUEST,
+    );
+  }
+
+  @ApiTags('Event')
+  @ApiOperation({
+    summary: '모든 요청 조회',
+    description: '시스템의 모든 보상 요청을 조회합니다.',
+  })
+  @ApiExtraModels(BaseResponseDto, RequestListResponseDto)
+  @ApiCreatedResponse({
+    description: '요청 목록 조회 성공',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        { properties: { data: { $ref: getSchemaPath(RequestListResponseDto) } } },
+      ],
+    },
+  })
+  @Get('requests')
+  handleGetRequests(@Req() req: Request, @Res() res: Response): void {
+    this.routeToMicroservice(
+      'EVENT',
+      this.eventClient,
+      'requests',
+      req,
+      res,
+      GatewayCommandEnum.REQUEST,
+    );
+  }
+
+  @ApiTags('Event')
+  @ApiOperation({
+    summary: '특정 유저의 요청 목록 조회',
+    description: '특정 유저의 모든 보상 요청을 조회합니다.',
+  })
+  @ApiExtraModels(BaseResponseDto, RequestListResponseDto)
+  @ApiCreatedResponse({
+    description: '유저 요청 목록 조회 성공',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        { properties: { data: { $ref: getSchemaPath(RequestListResponseDto) } } },
+      ],
+    },
+  })
+  @UseGuards(OwnershipGuard)
+  @Get('users/:userId/requests')
+  handleGetUserRequests(
+    @Param('userId') userId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+    @User() user: UserInfo,
+  ): void {
+    if (user.id !== userId) {
+      throw new HttpException('권한이 없습니다.', HttpStatus.FORBIDDEN);
+    }
+    this.routeToMicroservice(
+      'EVENT',
+      this.eventClient,
+      `users/${userId}/requests`,
+      req,
+      res,
+      GatewayCommandEnum.REQUEST,
+    );
+  }
+
+  @ApiTags('Event')
+  @ApiOperation({
+    summary: '특정 유저의 특정 요청 조회',
+    description: '특정 유저의 특정 보상 요청을 조회합니다.',
+  })
+  @ApiExtraModels(BaseResponseDto, RequestResponseDto)
+  @ApiCreatedResponse({
+    description: '유저 요청 조회 성공',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        { properties: { data: { $ref: getSchemaPath(RequestResponseDto) } } },
+      ],
+    },
+  })
+  @UseGuards(OwnershipGuard)
+  @Get('users/:userId/requests/:requestId')
+  handleGetUserRequest(
+    @Param('userId') userId: string,
+    @Param('requestId') requestId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): void {
+    this.routeToMicroservice(
+      'EVENT',
+      this.eventClient,
+      `users/${userId}/requests/${requestId}`,
       req,
       res,
       GatewayCommandEnum.REQUEST,

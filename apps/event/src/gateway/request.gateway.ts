@@ -3,7 +3,11 @@ import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CustomLoggerService } from '@app/common/logger';
 import { RequestService } from '@app/common/services/request.service';
 import { BaseResponseDto, GatewayCommandEnum } from '@app/common/dto';
-import { CreateRequestDto, RequestResponseDto } from '@app/common/dto/request';
+import {
+  CreateRequestDto,
+  RequestResponseDto,
+  RequestListResponseDto,
+} from '@app/common/dto/request';
 import { plainToClass } from 'class-transformer';
 import { BadRequestException, NotFoundException } from '@app/common/exceptions';
 
@@ -24,77 +28,126 @@ export class RequestGateway {
   }
 
   @MessagePattern({ cmd: GatewayCommandEnum.REQUEST })
-  async handleProxyRequest(data: {
+  async handleRequest(data: {
     path: string;
     method: string;
     body: ProxyPayload;
   }): Promise<BaseResponseDto<unknown>> {
     this.logger.log(`Received proxy request for path: ${data.path}, method: ${data.method}`);
 
-    const requestIdMatch = data.path.match(/^requests\/([^/]+)$/);
-
-    if (data.path === 'requests') {
-      return this.handleRequests(data);
-    } else if (requestIdMatch) {
-      return this.handleRequestById({ ...data, requestId: requestIdMatch[1] });
+    // GET /requests
+    if (data.path === 'requests' && data.method === 'GET') {
+      return this.handleGetRequests();
     }
 
-    this.logger.warn(`Unknown path requested in Request service: ${data.path}`);
+    // POST /requests
+    if (data.path === 'requests' && data.method === 'POST') {
+      return this.handleCreateRequest(data);
+    }
+
+    // GET /requests/:requestId
+    const requestMatch = data.path.match(/^requests\/([^/]+)$/);
+    if (requestMatch && data.method === 'GET') {
+      const requestId = requestMatch[1];
+      return this.handleGetRequestById(requestId);
+    }
+
+    // GET /users/:userId/requests
+    const userRequestsMatch = data.path.match(/^users\/([^/]+)\/requests$/);
+    if (userRequestsMatch && data.method === 'GET') {
+      const userId = userRequestsMatch[1];
+      return this.handleGetUserRequests(userId);
+    }
+
+    // GET /users/:userId/requests/:requestId
+    const userRequestMatch = data.path.match(/^users\/([^/]+)\/requests\/([^/]+)$/);
+    if (userRequestMatch && data.method === 'GET') {
+      const [, , requestId] = userRequestMatch;
+      return this.handleGetUserRequest(requestId);
+    }
+
     throw new RpcException(new NotFoundException(`Cannot ${data.method} /${data.path}`));
   }
 
-  private async handleRequests(data: {
-    method: string;
-    body: ProxyPayload;
-  }): Promise<BaseResponseDto<RequestResponseDto>> {
-    if (data.method === 'POST') {
-      const createRequestDto = data.body.body as CreateRequestDto;
-      const userId = data.body.headers['user-id'] as string;
+  private async handleGetRequests(): Promise<BaseResponseDto<RequestListResponseDto>> {
+    const { requests, totalCount } = await this.requestService.findAllRequests();
+    const response: RequestListResponseDto = {
+      requests: requests.map(req => plainToClass(RequestResponseDto, req)),
+      totalCount,
+    };
 
-      if (!userId) {
-        throw new RpcException(new BadRequestException('User ID is required'));
-      }
-
-      const request = await this.requestService.createRequest(createRequestDto, userId);
-      const response = plainToClass(RequestResponseDto, request);
-
-      return {
-        statusCode: HttpStatus.CREATED,
-        message: '보상 요청이 성공적으로 생성되었습니다.',
-        data: response,
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    throw new RpcException(
-      new BadRequestException(`Method ${data.method} not supported for requests`),
-    );
+    return {
+      statusCode: HttpStatus.OK,
+      message: '요청 목록을 성공적으로 조회했습니다.',
+      data: response,
+      timestamp: new Date().toISOString(),
+    };
   }
 
-  private async handleRequestById(data: {
+  private async handleGetRequestById(
+    requestId: string,
+  ): Promise<BaseResponseDto<RequestResponseDto>> {
+    const request = await this.requestService.findRequestById(requestId);
+    const response = plainToClass(RequestResponseDto, request);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: '요청을 성공적으로 조회했습니다.',
+      data: response,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  private async handleGetUserRequests(
+    userId: string,
+  ): Promise<BaseResponseDto<RequestListResponseDto>> {
+    const { requests, totalCount } = await this.requestService.findRequestsByUserId(userId);
+    const response: RequestListResponseDto = {
+      requests: requests.map(req => plainToClass(RequestResponseDto, req)),
+      totalCount,
+    };
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: '사용자의 요청 목록을 성공적으로 조회했습니다.',
+      data: response,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  private async handleGetUserRequest(
+    requestId: string,
+  ): Promise<BaseResponseDto<RequestResponseDto>> {
+    const request = await this.requestService.findRequestById(requestId);
+    const response = plainToClass(RequestResponseDto, request);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: '요청을 성공적으로 조회했습니다.',
+      data: response,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  private async handleCreateRequest(data: {
     method: string;
     body: ProxyPayload;
-    requestId: string;
   }): Promise<BaseResponseDto<RequestResponseDto>> {
-    if (data.method === 'GET') {
-      const request = await this.requestService.findRequestById(data.requestId);
+    const createRequestDto = data.body.body as CreateRequestDto;
+    const userId = data.body.headers['user-id'] as string;
 
-      if (!request) {
-        throw new RpcException(new NotFoundException('Request not found'));
-      }
-
-      const response = plainToClass(RequestResponseDto, request);
-
-      return {
-        statusCode: HttpStatus.OK,
-        message: '보상 요청을 성공적으로 조회했습니다.',
-        data: response,
-        timestamp: new Date().toISOString(),
-      };
+    if (!userId) {
+      throw new RpcException(new BadRequestException('User ID is required'));
     }
 
-    throw new RpcException(
-      new BadRequestException(`Method ${data.method} not supported for request by id`),
-    );
+    const request = await this.requestService.createRequest(createRequestDto, userId);
+    const response = plainToClass(RequestResponseDto, request);
+
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: '보상 요청이 성공적으로 생성되었습니다.',
+      data: response,
+      timestamp: new Date().toISOString(),
+    };
   }
 }

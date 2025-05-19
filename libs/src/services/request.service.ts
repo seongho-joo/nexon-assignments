@@ -4,7 +4,11 @@ import { RequestRepository } from '@app/common/repositories/request.repository';
 import { EventService } from './event.service';
 import { CreateRequestDto } from '@app/common/dto/request';
 import { Event, PointTransactionType, Request, RequestStatus, Reward } from '@app/common/schemas';
-import { BadRequestException, InternalServerException } from '@app/common/exceptions';
+import {
+  BadRequestException,
+  InternalServerException,
+  NotFoundException,
+} from '@app/common/exceptions';
 import { RpcException } from '@nestjs/microservices';
 import { RewardConditionValidatorService } from '@app/common/services/reward-condition-validator.service';
 import { Types } from 'mongoose';
@@ -98,5 +102,21 @@ export class RequestService {
       this.logger.error('포인트 지급 실패', err);
       throw new RpcException(new InternalServerException('포인트 지급 실패'));
     }
+  }
+
+  async findAllRequests(): Promise<{ requests: Request[]; totalCount: number }> {
+    const [requests, totalCount] = await Promise.all([
+      this.requestRepository.findAll(),
+      this.requestRepository.count(),
+    ]);
+    return { requests, totalCount };
+  }
+
+  async findRequestsByUserId(userId: string): Promise<{ requests: Request[]; totalCount: number }> {
+    const [requests, totalCount] = await Promise.all([
+      this.requestRepository.findByUserId(userId),
+      this.requestRepository.countByUserId(userId),
+    ]);
+    return { requests, totalCount };
   }
 }
