@@ -74,8 +74,12 @@ export class RequestService {
     return request;
   }
 
-  async findRequestById(requestId: string): Promise<Request | null> {
-    return this.requestRepository.findById(requestId);
+  async findRequestById(requestId: string): Promise<Request> {
+    const request = await this.requestRepository.findById(requestId);
+    if (!request) {
+      throw new RpcException(new NotFoundException('Request not found'));
+    }
+    return request;
   }
 
   async grantReward(reward: Reward, userId: string, event: Event) {
