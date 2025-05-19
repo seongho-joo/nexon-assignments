@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
-import { RequestResponseDto } from './request-response.dto';
+import { RequestResponseDto } from '@app/common/dto/request/request-response.dto';
 
 export class RequestListResponseDto {
   @Expose()
@@ -16,4 +16,4 @@ export class RequestListResponseDto {
     example: 10,
   })
   totalCount: number;
-} 
+}

@@ -5,13 +5,18 @@ import { CustomLoggerService } from '@app/common/logger';
 import { Request, RequestStatus } from '@app/common/schemas';
 import { Document } from 'mongoose';
 import { HttpStatus, NotFoundException } from '@nestjs/common';
-import { GatewayCommandEnum } from '@app/common/dto';
 
 interface ProxyPayload {
   body: any;
   query: any;
   params: any;
   headers: any;
+}
+
+// Extend Request type to include timestamps
+interface RequestWithTimestamps extends Request {
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 describe('RequestGateway', () => {
@@ -24,12 +29,18 @@ describe('RequestGateway', () => {
     eventId: 'test-event-id',
     userId: 'test-user-id',
     status: RequestStatus.PENDING,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  } as unknown as Request & Document;
+    createdAt: new Date('2024-03-20'),
+    updatedAt: new Date('2024-03-20'),
+  } as unknown as RequestWithTimestamps & Document;
 
   const mockRequestList = {
-    requests: [mockRequest, { ...mockRequest, requestId: 'test-request-id-2' } as unknown as Request & Document],
+    requests: [
+      mockRequest,
+      {
+        ...mockRequest,
+        _id: 'test-request-id-2',
+      } as unknown as RequestWithTimestamps & Document,
+    ],
     totalCount: 2,
   } as { requests: Request[]; totalCount: number };
 
@@ -86,8 +97,22 @@ describe('RequestGateway', () => {
         message: '요청 목록을 성공적으로 조회했습니다.',
         data: {
           requests: expect.arrayContaining([
-            expect.objectContaining({ requestId: 'test-request-id' }),
-            expect.objectContaining({ requestId: 'test-request-id-2' }),
+            expect.objectContaining({
+              requestId: mockRequest._id,
+              eventId: mockRequest.eventId,
+              userId: mockRequest.userId,
+              status: mockRequest.status,
+              createdAt: mockRequest.createdAt,
+              updatedAt: mockRequest.updatedAt,
+            }),
+            expect.objectContaining({
+              requestId: 'test-request-id-2',
+              eventId: mockRequest.eventId,
+              userId: mockRequest.userId,
+              status: mockRequest.status,
+              createdAt: mockRequest.createdAt,
+              updatedAt: mockRequest.updatedAt,
+            }),
           ]),
           totalCount: 2,
         },
@@ -117,8 +142,22 @@ describe('RequestGateway', () => {
         message: '사용자의 요청 목록을 성공적으로 조회했습니다.',
         data: {
           requests: expect.arrayContaining([
-            expect.objectContaining({ requestId: 'test-request-id' }),
-            expect.objectContaining({ requestId: 'test-request-id-2' }),
+            expect.objectContaining({
+              requestId: mockRequest._id,
+              eventId: mockRequest.eventId,
+              userId: mockRequest.userId,
+              status: mockRequest.status,
+              createdAt: mockRequest.createdAt,
+              updatedAt: mockRequest.updatedAt,
+            }),
+            expect.objectContaining({
+              requestId: 'test-request-id-2',
+              eventId: mockRequest.eventId,
+              userId: mockRequest.userId,
+              status: mockRequest.status,
+              createdAt: mockRequest.createdAt,
+              updatedAt: mockRequest.updatedAt,
+            }),
           ]),
           totalCount: 2,
         },
@@ -146,7 +185,14 @@ describe('RequestGateway', () => {
       expect(result).toEqual({
         statusCode: HttpStatus.OK,
         message: '요청을 성공적으로 조회했습니다.',
-        data: expect.objectContaining({ requestId: 'test-request-id' }),
+        data: expect.objectContaining({
+          requestId: mockRequest._id,
+          eventId: mockRequest.eventId,
+          userId: mockRequest.userId,
+          status: mockRequest.status,
+          createdAt: mockRequest.createdAt,
+          updatedAt: mockRequest.updatedAt,
+        }),
         timestamp: expect.any(String),
       });
     });
@@ -174,7 +220,14 @@ describe('RequestGateway', () => {
       expect(result).toEqual({
         statusCode: HttpStatus.CREATED,
         message: '보상 요청이 성공적으로 생성되었습니다.',
-        data: expect.any(Object),
+        data: expect.objectContaining({
+          requestId: mockRequest._id,
+          eventId: mockRequest.eventId,
+          userId: mockRequest.userId,
+          status: mockRequest.status,
+          createdAt: mockRequest.createdAt,
+          updatedAt: mockRequest.updatedAt,
+        }),
         timestamp: expect.any(String),
       });
     });
@@ -199,7 +252,14 @@ describe('RequestGateway', () => {
       expect(result).toEqual({
         statusCode: HttpStatus.OK,
         message: '요청을 성공적으로 조회했습니다.',
-        data: expect.any(Object),
+        data: expect.objectContaining({
+          requestId: mockRequest._id,
+          eventId: mockRequest.eventId,
+          userId: mockRequest.userId,
+          status: mockRequest.status,
+          createdAt: mockRequest.createdAt,
+          updatedAt: mockRequest.updatedAt,
+        }),
         timestamp: expect.any(String),
       });
     });

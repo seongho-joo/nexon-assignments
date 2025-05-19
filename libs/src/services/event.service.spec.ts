@@ -113,9 +113,7 @@ describe('EventService', () => {
         endDate: new Date('2024-04-20'),
       };
 
-      await expect(service.createEvent(invalidDto, 'test-user-id')).rejects.toThrow(
-        RpcException,
-      );
+      await expect(service.createEvent(invalidDto, 'test-user-id')).rejects.toThrow(RpcException);
     });
   });
 
@@ -227,4 +225,4 @@ describe('EventService', () => {
       expect(result).toEqual([]);
     });
   });
-}); 
+});

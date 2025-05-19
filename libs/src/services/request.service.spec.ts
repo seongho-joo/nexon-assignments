@@ -34,7 +34,6 @@ describe('RequestService', () => {
     description: 'Test Description',
     rewards: [
       {
-        rewardId: 'reward123',
         rewardPoint: 100,
         name: 'Play Time Reward',
         description: 'Reward for playing 1 hour',
@@ -264,13 +263,12 @@ describe('RequestService', () => {
       expect(result).toEqual(mockRequest);
     });
 
-    it('should return null if request not found', async () => {
+    it('should throw NotFoundException if request not found', async () => {
       requestRepository.findById.mockResolvedValue(null);
 
-      const result = await service.findRequestById('request123');
+      await expect(service.findRequestById('request123')).rejects.toThrow(RpcException);
 
       expect(requestRepository.findById).toHaveBeenCalledWith('request123');
-      expect(result).toBeNull();
     });
   });
 
