@@ -35,7 +35,7 @@ export class RolesGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<RequestWithUser>();
     const user = request.user;
     const method = request.method;
-    const path = request.route.path;
+    const path = this.normalizePathPattern(request.url);
 
     if (!user || !user.role) {
       throw new UnauthorizedException('Authentication required');
@@ -67,5 +67,30 @@ export class RolesGuard implements CanActivate {
     }
 
     return true;
+  }
+
+  private normalizePathPattern(path: string): string {
+    // Remove query parameters
+    const pathWithoutQuery = path.split('?')[0];
+
+    const segments = pathWithoutQuery.split('/');
+
+    const normalizedSegments = segments.map((segment, index) => {
+      if (!segment || segment === 'api') {
+        return segment;
+      }
+
+      if (/^[0-9a-fA-F]{24}$/.test(segment)) {
+        const prevSegment = segments[index - 1];
+        if (prevSegment) {
+          const paramName = prevSegment.endsWith('s') ? prevSegment.slice(0, -1) : prevSegment;
+          return `:${paramName}Id`;
+        }
+      }
+
+      return segment;
+    });
+
+    return normalizedSegments.join('/');
   }
 }

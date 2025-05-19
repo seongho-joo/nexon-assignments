@@ -43,14 +43,14 @@ describe('RolesGuard', () => {
   const mockExecutionContext = (
     role: UserRole | null,
     method: string,
-    path: string,
+    url: string,
   ): ExecutionContext => {
     const mockContext = {
       switchToHttp: () => ({
         getRequest: () => ({
           user: role ? { role } : undefined,
           method,
-          route: { path },
+          url,
         }),
       }),
       getHandler: () => ({}),
@@ -136,6 +136,78 @@ describe('RolesGuard', () => {
 
       expect(result).toBe(true);
       expect(redisService.sMembers).not.toHaveBeenCalled();
+    });
+
+    it('should normalize path with ObjectId before checking Redis', async () => {
+      const context = mockExecutionContext(
+        UserRole.OPERATOR,
+        'GET',
+        '/api/users/682b6748f602613865fe0079/requests',
+      );
+      redisService.sMembers.mockResolvedValue(['/api/users/:userId/requests']);
+
+      const result = await guard.canActivate(context);
+
+      expect(result).toBe(true);
+      expect(redisService.sMembers).toHaveBeenCalledWith('authorization:OPERATOR:GET');
+    });
+
+    it('should normalize path with multiple ObjectIds before checking Redis', async () => {
+      const context = mockExecutionContext(
+        UserRole.OPERATOR,
+        'GET',
+        '/api/users/682b6748f602613865fe0079/requests/682b68a3738dd058a1a3b27c',
+      );
+      redisService.sMembers.mockResolvedValue(['/api/users/:userId/requests/:requestId']);
+
+      const result = await guard.canActivate(context);
+
+      expect(result).toBe(true);
+      expect(redisService.sMembers).toHaveBeenCalledWith('authorization:OPERATOR:GET');
+    });
+  });
+
+  describe('normalizePathPattern', () => {
+    it('should convert MongoDB ObjectId to parameter pattern', () => {
+      const path = '/api/users/682b6748f602613865fe0079/requests/682b68a3738dd058a1a3b27c';
+      const result = (guard as any).normalizePathPattern(path);
+      expect(result).toBe('/api/users/:userId/requests/:requestId');
+    });
+
+    it('should handle paths without ObjectId', () => {
+      const path = '/api/events';
+      const result = (guard as any).normalizePathPattern(path);
+      expect(result).toBe('/api/events');
+    });
+
+    it('should handle paths with single ObjectId', () => {
+      const path = '/api/events/682b6748f602613865fe0079';
+      const result = (guard as any).normalizePathPattern(path);
+      expect(result).toBe('/api/events/:eventId');
+    });
+
+    it('should handle empty segments and api prefix', () => {
+      const path = '/api//events';
+      const result = (guard as any).normalizePathPattern(path);
+      expect(result).toBe('/api//events');
+    });
+
+    it('should handle paths with non-plural resource names', () => {
+      const path = '/api/event/682b6748f602613865fe0079';
+      const result = (guard as any).normalizePathPattern(path);
+      expect(result).toBe('/api/event/:eventId');
+    });
+
+    it('should handle query parameters correctly', () => {
+      const path = '/api/events/682b6748f602613865fe0079?page=1&size=10';
+      const result = (guard as any).normalizePathPattern(path);
+      expect(result).toBe('/api/events/:eventId');
+    });
+
+    it('should handle multiple consecutive ObjectIds', () => {
+      const path = '/api/events/682b6748f602613865fe0079/rewards/682b68a3738dd058a1a3b27c';
+      const result = (guard as any).normalizePathPattern(path);
+      expect(result).toBe('/api/events/:eventId/rewards/:rewardId');
     });
   });
 });
