@@ -16,7 +16,7 @@ export class PlayTimeTrackerService implements OnModuleInit {
 
   async onModuleInit() {
     // 주기적으로 실행되는 플레이 타임 업데이트 작업 설정
-    setInterval(() => this.updateAllActiveSessions(), 60000); // 1분마다 실행
+    setInterval(() => this.updateAllActiveSessions(), 60000); // 10초마다 실행
   }
 
   async startSession(userId: string): Promise<void> {
@@ -54,24 +54,54 @@ export class PlayTimeTrackerService implements OnModuleInit {
   }
 
   private async updateAllActiveSessions(): Promise<void> {
-    const pattern = `${this.PLAY_TIME_SESSION_START_KEY_PREFIX}*`;
+    this.logger.debug('updateAllActiveSessions 진입');
+    const lockKey = 'lock:playtime:update';
+    const lockValue = Date.now().toString();
+    const acquired = await new Promise<boolean>((resolve, reject) => {
+      this.redisService.redisNativeClient.set(
+        lockKey,
+        lockValue,
+        'NX',
+        'PX',
+        63000,
+        (err, reply) => {
+          if (err) return reject(err);
+          resolve(reply === 'OK');
+        },
+      );
+    });
+    if (!acquired) {
+      this.logger.warn('setnx 락 획득 실패, 다른 인스턴스가 집계 중일 수 있음');
+      return;
+    }
+    this.logger.debug('setnx 락 획득 성공');
+    try {
+      const pattern = `${this.PLAY_TIME_SESSION_START_KEY_PREFIX}*`;
+      const sessionKeys = await this.redisService.scan(pattern, 100);
+      for (const sessionKey of sessionKeys) {
+        const userId = sessionKey.replace(this.PLAY_TIME_SESSION_START_KEY_PREFIX, '');
+        const sessionStart = await this.redisService.get<string>(sessionKey);
 
-    const sessionKeys = await this.redisService.scan(pattern, 100);
-    for (const sessionKey of sessionKeys) {
-      const userId = sessionKey.replace(this.PLAY_TIME_SESSION_START_KEY_PREFIX, '');
-      const sessionStart = await this.redisService.get<string>(sessionKey);
+        if (sessionStart) {
+          const currentTime = Date.now();
+          const sessionDuration = Math.floor((currentTime - Number(sessionStart ?? 0)) / 60000);
 
-      if (sessionStart) {
-        const currentTime = Date.now();
-        const sessionDuration = Math.floor((currentTime - Number(sessionStart ?? 0)) / 60000);
+          await this.redisService.set(sessionKey, currentTime);
 
-        await this.redisService.set(sessionKey, currentTime);
+          const playTimeKey = this.getPlayTimeKey(userId);
+          await this.redisService.increment(playTimeKey, sessionDuration);
 
-        const playTimeKey = this.getPlayTimeKey(userId);
-        await this.redisService.increment(playTimeKey, sessionDuration);
-
-        this.logger.log(`Updated play time for user ${userId}: +${sessionDuration} minutes`);
+          this.logger.log(`Updated play time for user ${userId}: +${sessionDuration} minutes`);
+        }
       }
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        this.redisService.redisNativeClient.del(lockKey, err => {
+          if (err) return reject(err);
+          this.logger.debug('setnx 락 해제 완료');
+          resolve();
+        });
+      });
     }
   }
 

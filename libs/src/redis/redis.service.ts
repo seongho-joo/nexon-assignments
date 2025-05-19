@@ -200,4 +200,8 @@ export class RedisService {
       throw error;
     }
   }
+
+  get redisNativeClient(): RedisClient {
+    return this.client;
+  }
 }
