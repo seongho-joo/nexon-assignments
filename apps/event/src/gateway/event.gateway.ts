@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, HttpStatus, NotFoundException } from '@nestjs/common';
+import { Controller, HttpStatus } from '@nestjs/common';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CustomLoggerService } from '@app/common/logger';
 import { EventService } from '@app/common/services/event.service';
@@ -11,6 +11,7 @@ import {
   EventRewardsResponseDto,
 } from '@app/common/dto/event';
 import { plainToClass } from 'class-transformer';
+import { BadRequestException, NotFoundException } from '@app/common/exceptions';
 
 interface ProxyPayload {
   body: unknown;

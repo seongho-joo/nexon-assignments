@@ -1,10 +1,11 @@
-import { Controller, HttpStatus, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Controller, HttpStatus } from '@nestjs/common';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CustomLoggerService } from '@app/common/logger';
 import { RequestService } from '@app/common/services/request.service';
 import { BaseResponseDto, GatewayCommandEnum } from '@app/common/dto';
 import { CreateRequestDto, RequestResponseDto } from '@app/common/dto/request';
 import { plainToClass } from 'class-transformer';
+import { BadRequestException, NotFoundException } from '@app/common/exceptions';
 
 interface ProxyPayload {
   body: unknown;

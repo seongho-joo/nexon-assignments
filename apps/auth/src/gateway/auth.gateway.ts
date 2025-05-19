@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, HttpStatus, NotFoundException } from '@nestjs/common';
+import { Controller, HttpStatus } from '@nestjs/common';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { CustomLoggerService } from '@app/common/logger';
 import { UserService } from '@app/common/services/user.service';
@@ -18,6 +18,7 @@ import {
 } from '@app/common/dto/role/role-permission.dto';
 import { User } from '@app/common/schemas';
 import { UpdateUserRoleDto } from '@app/common/dto/role';
+import { BadRequestException, NotFoundException } from '@app/common/exceptions';
 
 interface ProxyPayload {
   path: string;

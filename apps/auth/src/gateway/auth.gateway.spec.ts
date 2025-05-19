@@ -1,11 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, HttpStatus, NotFoundException } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { AuthGateway } from './auth.gateway';
 import { CustomLoggerService } from '@app/common/logger';
 import { UserService } from '@app/common/services/user.service';
 import { AuthService } from '@app/common/services/auth.service';
 import { User, UserRole } from '@app/common/schemas';
+import { NotFoundException } from '@app/common/exceptions';
 
 interface ProxyPayload {
   path: string;
@@ -287,4 +288,4 @@ describe('AuthGateway', () => {
       await expect(gateway.handleProxyRequest(updateRolePayload)).rejects.toThrow();
     });
   });
-}); 
+});
