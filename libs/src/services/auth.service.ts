@@ -57,8 +57,10 @@ export class AuthService {
     const accessToken = this.jwtService.sign(payload);
 
     await this.storeToken(user.id, accessToken);
-    await this.recordUserLogin(user.id);
-    await this.pttService.startSession(user.id);
+    if (user.role === UserRole.USER) {
+      await this.recordUserLogin(user.id);
+      await this.pttService.startSession(user.id);
+    }
 
     const userInfo: UserInfo = {
       id: user.id,
