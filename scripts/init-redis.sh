@@ -6,11 +6,11 @@ echo "Redis initialization script starting..."
 REDIS_PASSWORD="Admin123!"
 
 # 초기 데이터 설정
-redis-cli -a $REDIS_PASSWORD SADD "authorization:USER:POST" "/request"
-redis-cli -a $REDIS_PASSWORD SADD "authorization:USER:GET" "/request" "/events" "/rewards"
-redis-cli -a $REDIS_PASSWORD SADD "authorization:OPERATOR:POST" "/events" "/rewards"
-redis-cli -a $REDIS_PASSWORD SADD "authorization:OPERATOR:GET" "/events" "/rewards"
-redis-cli -a $REDIS_PASSWORD SADD "authorization:AUDITOR:GET" "/requests/histories"
+redis-cli -a $REDIS_PASSWORD SADD "authorization:USER:POST" "/api/requests"
+redis-cli -a $REDIS_PASSWORD SADD "authorization:USER:GET" "/api/users/:userId/requests" "/api/users/:userId/requests/:requestId" "/api/events" "/api/events/:eventId/rewards" "/api/events/:eventId" "/api/users/:userId/point-transactions"
+redis-cli -a $REDIS_PASSWORD SADD "authorization:OPERATOR:POST" "/api/events" "/api/rewards"
+redis-cli -a $REDIS_PASSWORD SADD "authorization:OPERATOR:GET" "/api/users/:userId/requests" "/api/users/:userId/requests/:requestId" "/api/requests" "/api/requests/:requestId" "/api/events" "/api/events/:eventId/rewards"  "/api/events/:eventId" "/api/users/:userId/point-transactions"
+redis-cli -a $REDIS_PASSWORD SADD "authorization:AUDITOR:GET" "/api/users/:userId/requests" "/api/users/:userId/requests/:requestId" "/api/requests" "/api/requests/:requestId" "/api/users/:userId/point-transactions"
 redis-cli -a $REDIS_PASSWORD SADD "authorization:ADMIN:GET" "/*"
 redis-cli -a $REDIS_PASSWORD SADD "authorization:ADMIN:POST" "/*"
 
