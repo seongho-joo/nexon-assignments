@@ -57,7 +57,7 @@ services:
       - redis
     networks:
       - app-network
-    command: node dist/apps/gateway/main
+    command: node dist/apps/gateway/apps/gateway/src/main
 
   auth:
     build:
@@ -75,7 +75,7 @@ services:
       - redis
     networks:
       - app-network
-    command: node dist/apps/auth/main
+    command: node dist/apps/auth/apps/auth/src/main
 
   event:
     build:
@@ -93,7 +93,7 @@ services:
       - redis
     networks:
       - app-network
-    command: node dist/apps/event/main
+    command: node dist/apps/event/apps/event/src/main
 
 volumes:
   mongodb_data:

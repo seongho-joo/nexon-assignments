@@ -2,7 +2,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { RpcException } from '@nestjs/microservices';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { UserService } from './user.service';
 import { RedisService } from '@app/common/redis';
@@ -14,7 +14,7 @@ import {
 } from '@app/common/dto/role/role-permission.dto';
 import { PlayTimeTrackerService } from './play-time-tracker.service';
 
-jest.mock('bcrypt');
+jest.mock('bcryptjs');
 
 describe('AuthService', () => {
   let service: AuthService;

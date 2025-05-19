@@ -2,13 +2,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { RpcException } from '@nestjs/microservices';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { UserService } from './user.service';
 import { CustomLoggerService } from '@app/common/logger';
 import { UserRepository } from '@app/common/repositories/user.repository';
 import { User, UserRole } from '@app/common/schemas';
 
-jest.mock('bcrypt');
+jest.mock('bcryptjs');
 
 describe('UserService', () => {
   let service: UserService;
