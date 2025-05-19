@@ -5,8 +5,7 @@ import { RedisEnum } from '@app/common/redis/redis.enum';
 
 @Injectable()
 export class PlayTimeTrackerService implements OnModuleInit {
-  private readonly PLAY_TIME_SESSION_START_KEY_PREFIX =
-    RedisEnum.PLAY_TIME_SESSION_START.getKeyAndTTL(':').key;
+  private readonly PLAY_TIME_SESSION_START_KEY_PREFIX = RedisEnum.PLAY_TIME_SESSION_START.key + ':';
 
   constructor(
     private readonly redisService: RedisService,
@@ -32,13 +31,13 @@ export class PlayTimeTrackerService implements OnModuleInit {
     const sessionStartKey = this.getSessionStartKey(userId);
     const playTimeKey = this.getPlayTimeKey(userId);
 
-    const sessionStart = (await this.redisService.get<number>(sessionStartKey)) ?? 0;
+    const sessionStart = await this.redisService.get<string>(sessionStartKey);
     if (!sessionStart) {
       return 0;
     }
 
     const currentTime = Date.now();
-    const sessionDuration = Math.floor((currentTime - sessionStart) / 60000);
+    const sessionDuration = Math.floor((currentTime - Number(sessionStart ?? 0)) / 60000);
 
     await this.redisService.increment(playTimeKey, sessionDuration);
     await this.redisService.delete(sessionStartKey);
@@ -50,31 +49,30 @@ export class PlayTimeTrackerService implements OnModuleInit {
 
   async getPlayTime(userId: string): Promise<number> {
     const playTimeKey = this.getPlayTimeKey(userId);
-    const playTime = await this.redisService.get<number>(playTimeKey);
-    return playTime ?? 0;
+    const playTime = await this.redisService.get<string>(playTimeKey);
+    return Number(playTime ?? 0);
   }
 
   private async updateAllActiveSessions(): Promise<void> {
     const pattern = `${this.PLAY_TIME_SESSION_START_KEY_PREFIX}*`;
 
-    await this.redisService.scanAsync(pattern, 100, async sessionKeys => {
-      for (const sessionKey of sessionKeys) {
-        const userId = sessionKey.replace(this.PLAY_TIME_SESSION_START_KEY_PREFIX, '');
-        const sessionStart = await this.redisService.get<number>(sessionKey);
+    const sessionKeys = await this.redisService.scan(pattern, 100);
+    for (const sessionKey of sessionKeys) {
+      const userId = sessionKey.replace(this.PLAY_TIME_SESSION_START_KEY_PREFIX, '');
+      const sessionStart = await this.redisService.get<string>(sessionKey);
 
-        if (sessionStart) {
-          const currentTime = Date.now();
-          const sessionDuration = Math.floor((currentTime - sessionStart) / 60000);
+      if (sessionStart) {
+        const currentTime = Date.now();
+        const sessionDuration = Math.floor((currentTime - Number(sessionStart ?? 0)) / 60000);
 
-          await this.redisService.set(sessionKey, currentTime);
+        await this.redisService.set(sessionKey, currentTime);
 
-          const playTimeKey = this.getPlayTimeKey(userId);
-          await this.redisService.increment(playTimeKey, sessionDuration);
+        const playTimeKey = this.getPlayTimeKey(userId);
+        await this.redisService.increment(playTimeKey, sessionDuration);
 
-          this.logger.log(`Updated play time for user ${userId}: +${sessionDuration} minutes`);
-        }
+        this.logger.log(`Updated play time for user ${userId}: +${sessionDuration} minutes`);
       }
-    });
+    }
   }
 
   private getSessionStartKey(userId: string): string {
@@ -82,6 +80,7 @@ export class PlayTimeTrackerService implements OnModuleInit {
   }
 
   private getPlayTimeKey(userId: string): string {
-    return RedisEnum.PLAY_TIME.getKeyAndTTL(userId).key;
+    const { key } = RedisEnum.PLAY_TIME.getKeyAndTTL(userId);
+    return key;
   }
 }

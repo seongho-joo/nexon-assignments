@@ -35,8 +35,8 @@ export class RewardConditionValidatorService {
     userId: string,
   ): Promise<ValidateInfo> {
     const { key } = RedisEnum.CONTINUOUS_LOGIN_COUNT.getKeyAndTTL(userId);
-    const loginCount = (await this.redisService.get<number>(key)) ?? 0;
-    const isValid = loginCount >= condition.targetValue;
+    const loginCount = await this.redisService.get<string>(key);
+    const isValid = Number(loginCount ?? 0) >= condition.targetValue;
 
     return {
       isValid,
@@ -51,8 +51,8 @@ export class RewardConditionValidatorService {
     userId: string,
   ): Promise<ValidateInfo> {
     const { key } = RedisEnum.PLAY_TIME.getKeyAndTTL(userId);
-    const playTimeMinutes = (await this.redisService.get<number>(key)) ?? 0;
-    const isValid = playTimeMinutes >= condition.targetValue;
+    const playTimeMinutes = await this.redisService.get<string>(key);
+    const isValid = Number(playTimeMinutes ?? 0) >= condition.targetValue;
 
     return {
       isValid,
