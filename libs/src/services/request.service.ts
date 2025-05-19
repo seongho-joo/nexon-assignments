@@ -48,7 +48,8 @@ export class RequestService {
       throw new RpcException(new BadRequestException('Reward already requested'));
     }
 
-    // 보상 조건 검증
+    // 모든 보상 조건 검증
+    let totalRewardPoints = 0;
     for (const reward of event.rewards) {
       const validationResult = await this.rewardConditionValidator.validateCondition(
         reward.condition,
@@ -60,7 +61,30 @@ export class RequestService {
           new BadRequestException(`보상 조건 불충족: ${validationResult.reason}`),
         );
       }
-      await this.grantReward(reward, userId, event);
+      totalRewardPoints += reward.rewardPoint;
+    }
+
+    // 보상 일괄 지급
+    try {
+      const user = await this.userRepository.findById(userId);
+      if (!user) {
+        throw new RpcException(new InternalServerException('유저 정보 없음'));
+      }
+
+      const newBalance = (user!.balance || 0) + totalRewardPoints;
+      await this.userRepository.updateBalance(userId, newBalance);
+
+      await this.pointTransactionRepository.create({
+        userId: user._id as Types.ObjectId,
+        amount: totalRewardPoints,
+        type: PointTransactionType.EVENT_REWARD,
+        eventId: event._id as Types.ObjectId,
+        balanceAfter: newBalance,
+        description: `[이벤트:${event.title}] 보상 지급`,
+      });
+    } catch (err) {
+      this.logger.error('포인트 지급 실패', err);
+      throw new RpcException(new InternalServerException('포인트 지급 실패'));
     }
 
     const request = await this.requestRepository.create({
@@ -80,32 +104,6 @@ export class RequestService {
       throw new RpcException(new NotFoundException('Request not found'));
     }
     return request;
-  }
-
-  async grantReward(reward: Reward, userId: string, event: Event) {
-    const amount = reward.rewardPoint;
-
-    try {
-      const user = await this.userRepository.findById(userId);
-      if (!user) {
-        throw new RpcException(new InternalServerException('유저 정보 없음'));
-      }
-
-      const newBalance = (user!.balance || 0) + amount;
-      await this.userRepository.updateBalance(userId, newBalance);
-
-      await this.pointTransactionRepository.create({
-        userId: user._id as Types.ObjectId,
-        amount,
-        type: PointTransactionType.EVENT_REWARD,
-        eventId: event._id as Types.ObjectId,
-        balanceAfter: newBalance,
-        description: `[이벤트:${event.title}] 보상 지급`,
-      });
-    } catch (err) {
-      this.logger.error('포인트 지급 실패', err);
-      throw new RpcException(new InternalServerException('포인트 지급 실패'));
-    }
   }
 
   async findAllRequests(): Promise<{ requests: Request[]; totalCount: number }> {

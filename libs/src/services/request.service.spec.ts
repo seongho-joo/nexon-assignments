@@ -131,9 +131,10 @@ describe('RequestService', () => {
         eventId: 'event123',
         status: RequestStatus.APPROVED,
       } as any);
+      pointTransactionRepository.create.mockResolvedValue({} as any);
     });
 
-    it('should create a request and grant reward successfully', async () => {
+    it('should create a request and grant total reward points successfully', async () => {
       const result = await service.createRequest(createRequestDto, 'user123');
 
       expect(eventService.findEventById).toHaveBeenCalledWith('event123');
@@ -141,6 +142,18 @@ describe('RequestService', () => {
         mockEvent.rewards![0].condition,
         'user123',
       );
+      expect(userRepository.updateBalance).toHaveBeenCalledWith(
+        'user123',
+        mockUser.balance! + mockEvent.rewards![0].rewardPoint,
+      );
+      expect(pointTransactionRepository.create).toHaveBeenCalledWith({
+        userId: mockUser._id,
+        amount: mockEvent.rewards![0].rewardPoint,
+        type: PointTransactionType.EVENT_REWARD,
+        eventId: mockEvent._id,
+        balanceAfter: mockUser.balance! + mockEvent.rewards![0].rewardPoint,
+        description: `[이벤트:${mockEvent.title}] 보상 지급`,
+      });
       expect(requestRepository.create).toHaveBeenCalledWith({
         userId: 'user123',
         eventId: 'event123',
@@ -184,58 +197,21 @@ describe('RequestService', () => {
         RpcException,
       );
     });
-  });
 
-  describe('grantReward', () => {
-    const mockReward: Reward = {
-      name: '플레이타임 보상',
-      rewardPoint: 500,
-      description: '1시간 플레이 보상',
-      condition: {
-        type: RewardConditionType.PLAY_TIME,
-        targetValue: 60,
-        description: '1시간 이상 플레이',
-        additionalParams: {},
-      },
-    };
-
-    beforeEach(() => {
-      userRepository.findById.mockResolvedValue(mockUser as User);
-      pointTransactionRepository.create.mockResolvedValue({} as any);
-    });
-
-    it('should grant reward points successfully', async () => {
-      await service.grantReward(mockReward, mockUser.userId!, mockEvent as Event);
-
-      expect(userRepository.findById).toHaveBeenCalledWith(mockUser.userId);
-      expect(userRepository.updateBalance).toHaveBeenCalledWith(
-        mockUser.userId,
-        mockUser.balance! + mockReward.rewardPoint,
-      );
-      expect(pointTransactionRepository.create).toHaveBeenCalledWith({
-        userId: mockUser._id,
-        amount: mockReward.rewardPoint,
-        type: PointTransactionType.EVENT_REWARD,
-        eventId: mockEvent._id,
-        balanceAfter: mockUser.balance! + mockReward.rewardPoint,
-        description: `[이벤트:${mockEvent.title}] 보상 지급`,
-      });
-    });
-
-    it('should throw error if user not found', async () => {
+    it('should throw error if user not found during reward granting', async () => {
       userRepository.findById.mockResolvedValue(null);
 
-      await expect(
-        service.grantReward(mockReward, mockUser.userId!, mockEvent as Event),
-      ).rejects.toThrow(RpcException);
+      await expect(service.createRequest(createRequestDto, 'user123')).rejects.toThrow(
+        RpcException,
+      );
     });
 
     it('should throw error if point transaction fails', async () => {
       pointTransactionRepository.create.mockRejectedValue(new Error('DB Error'));
 
-      await expect(
-        service.grantReward(mockReward, mockUser.userId!, mockEvent as Event),
-      ).rejects.toThrow(RpcException);
+      await expect(service.createRequest(createRequestDto, 'user123')).rejects.toThrow(
+        RpcException,
+      );
       expect(logger.error).toHaveBeenCalled();
     });
 
@@ -243,11 +219,11 @@ describe('RequestService', () => {
       const userWithNoBalance = { ...mockUser, balance: 0 };
       userRepository.findById.mockResolvedValue(userWithNoBalance as User);
 
-      await service.grantReward(mockReward, mockUser.userId!, mockEvent as Event);
+      await service.createRequest(createRequestDto, 'user123');
 
       expect(userRepository.updateBalance).toHaveBeenCalledWith(
-        mockUser.userId,
-        mockReward.rewardPoint,
+        'user123',
+        mockEvent.rewards![0].rewardPoint,
       );
     });
   });
