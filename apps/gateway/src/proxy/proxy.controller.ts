@@ -28,6 +28,7 @@ import {
   ApiQuery,
   ApiTags,
   getSchemaPath,
+  ApiResponse,
 } from '@nestjs/swagger';
 import { BaseResponseDto, GatewayCommandEnum } from '@app/common/dto';
 import {
@@ -61,6 +62,7 @@ import {
   RequestListResponseDto,
 } from '@app/common/dto/request';
 import { OwnershipGuard } from '@app/common/guards';
+import { PointTransactionListResponseDto } from '@app/common/dto/point-transaction';
 
 interface ProxyPayload {
   path: string;
@@ -618,6 +620,41 @@ export class ProxyController {
       req,
       res,
       GatewayCommandEnum.REQUEST,
+    );
+  }
+
+  @ApiOperation({ summary: '사용자의 포인트 트랜잭션 목록 조회' })
+  @ApiExtraModels(PointTransactionListResponseDto)
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '포인트 트랜잭션 목록 조회 성공',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(BaseResponseDto) },
+        {
+          properties: {
+            data: {
+              $ref: getSchemaPath(PointTransactionListResponseDto),
+            },
+          },
+        },
+      ],
+    },
+  })
+  @UseGuards(OwnershipGuard)
+  @Get('users/:userId/point-transactions')
+  handleGetUserTransactions(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Param('userId') userId: string,
+  ): void {
+    this.routeToMicroservice(
+      'EVENT',
+      this.eventClient,
+      `users/${userId}/point-transactions`,
+      req,
+      res,
+      GatewayCommandEnum.POINT_TRANSACTION,
     );
   }
 

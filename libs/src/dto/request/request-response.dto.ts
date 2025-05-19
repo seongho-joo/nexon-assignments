@@ -19,4 +19,4 @@ export class RequestResponseDto {
 
   @ApiProperty({ description: '요청 업데이트 일자' })
   updatedAt: Date;
-} 
+}

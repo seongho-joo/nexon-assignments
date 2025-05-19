@@ -13,7 +13,7 @@ export enum PointTransactionType {
 }
 
 @Schema({ timestamps: { createdAt: 'timestamp', updatedAt: false } })
-export class PointTransaction {
+export class PointTransaction extends Document {
   /** 회원 고유 ID */
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   userId: Types.ObjectId;

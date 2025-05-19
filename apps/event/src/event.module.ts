@@ -6,11 +6,12 @@ import {
   EventSchema,
   PointTransaction,
   PointTransactionSchema,
+  Request,
   RequestSchema,
   User,
   UserSchema,
 } from '@app/common/schemas';
-import { EventGateway, RequestGateway } from '@app/event/gateway';
+import { EventGateway, RequestGateway, PointTransactionGateway } from '@app/event/gateway';
 import { EventService } from '@app/common/services/event.service';
 import { EventRepository } from '@app/common/repositories/event.repository';
 import { LoggerModule } from '@app/common/logger';
@@ -24,6 +25,7 @@ import { RewardConditionValidatorService } from '@app/common/services/reward-con
 import { RedisModule } from '@app/common/redis';
 import { PointTransactionRepository } from '@app/common/repositories/point-transaction.repository';
 import { UserRepository } from '@app/common/repositories/user.repository';
+import { PointTransactionService } from '@app/common/services/point-transaction.service';
 
 @Module({
   imports: [
@@ -74,7 +76,7 @@ import { UserRepository } from '@app/common/repositories/user.repository';
     LoggerModule,
     RedisModule,
   ],
-  controllers: [EventController, EventGateway, RequestGateway],
+  controllers: [EventController, EventGateway, RequestGateway, PointTransactionGateway],
   providers: [
     EventService,
     EventRepository,
@@ -84,6 +86,7 @@ import { UserRepository } from '@app/common/repositories/user.repository';
     RewardConditionValidatorService,
     PointTransactionRepository,
     UserRepository,
+    PointTransactionService,
   ],
 })
 export class EventModule {}

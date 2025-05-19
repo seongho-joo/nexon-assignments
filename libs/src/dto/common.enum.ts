@@ -8,4 +8,5 @@ export enum GatewayCommandEnum {
   'AUTH' = 'auth',
   'EVENT' = 'event',
   'REQUEST' = 'request',
+  'POINT_TRANSACTION' = 'point-transaction',
 }
